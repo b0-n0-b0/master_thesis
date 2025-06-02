@@ -1,15 +1,6 @@
 from manticore.wasm import ManticoreWASM, types
 from manticore.core.plugin import Plugin
 
-class Rule():
-    def __init__(target_instruction, parameters, constraints=[]):
-        # mnemonic target
-        self.target_instruction = target_instruction
-        # list of target's instruction parameters (with names) 
-        self.parameters = parameters
-        # list of constraints to apply
-        self.constraints = constraints
-
 class PrintRetPlugin(Plugin):
     """A plugin that looks for states that returned SOMETHING and solves for their inputs"""
 
