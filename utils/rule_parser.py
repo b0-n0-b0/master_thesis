@@ -1,6 +1,15 @@
 import re
+class RuleInstance():
+    """ An actual instance (or match) of a specific rule"""
+    def __init__(self, rule, fidx, offset):
+        self.rule = rule
+        self.fidx = fidx
+        self.offset = offset
+        self.symbolic_parameters = []
+
 class Rule():
-    def __init__(self, name, target_instruction, parameters, constraints=[]):
+    """ Rule object, containing the rule """
+    def __init__(self, name, target_instruction, parameters=[], constraints=[]):
         self.name = name
         # mnemonic target
         self.target_instruction = target_instruction
@@ -12,19 +21,26 @@ class Rule():
         return f"______ {self.name} ______\ntarget instruction: {self.target_instruction}\nparameters: {self.parameters}\nconstraints: {self.constraints}"
 
 class RuleSet():
+    """ A set of rule objects, ordered by application sequence"""
+    # contains the rules in apply order
     rules = []
+    # contains the rule sequence
     sequence  = []
+    application_order = []
+
+    # TODO: enforce uniqueness on params name
+    # TODO: enforce non-repetition on rule sequence statement
     def __init__(self, rule_file):
         with open(rule_file, 'r') as file:
             for line in file:
                 # remove comments
                 clean_line = line.replace(" ", "").strip().split("#")[0]
-                # parsing the rule sequence statement
+                # parse the rule sequence statement
                 if clean_line[0] == "!":
                     rule_sequence = clean_line.split("!")[1].split(">")
                     self.sequence = rule_sequence
                     break
-                # parsing a rule statement
+                # parse a rule statement
                 else:
                     rule_name, rule = clean_line.split("|")
                     # parse actual Rule object:
@@ -36,16 +52,26 @@ class RuleSet():
                     for param in params:
                         assert(re.match("^[a-zA-Z][a-z,A-Z,0-9,_]*$", param))
                     self.rules.append(Rule(rule_name, target_instruction, params, constraints))
-        print(self)
+        # check rule existance and order rules
+        for idx, seq_rule in enumerate(self.sequence):
+            found = False
+            for rule_idx, rule in enumerate(self.rules):
+                if rule.name == seq_rule:
+                    found = True
+                    self.application_order.append(rule_idx)
+                    break
+            if not found:
+                raise Exception("Invalid rule_name in rule sequence statement")
 
     def __str__(self):
-        output  = "------ rules ------\n"
+        output  = "------ RULES ------\n\n"
         for rule in self.rules:
             output = output + rule.__str__() + "\n"
-        output = output + "------ Rule sequence ------\n"
+        output = output + "\n------ RULES SEQUENCE ------\n\n"
         for seq_elem in self.sequence:
             output = output + seq_elem +" "
         return output
 
 if __name__ == "__main__":
-    rule_set = RuleSet("./rule.set")
+    rule_set = RuleSet("../rule.set")
+    print(rule_set)
