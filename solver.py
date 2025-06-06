@@ -51,7 +51,9 @@ class InstructionHookPlugin(Plugin):
         instruction = args[0]
         self.generic_solver(state, instruction)
         # print(f"In function: {instruction.funcaddr} executing {instruction.mnemonic} @ offset {instruction.offset}")
-
+    def will_call_function_callback(self, state, *args):
+        called_function = args[0]
+        print(f"will call function {called_function}")
 
 
 
