@@ -1,11 +1,13 @@
 import re
-class RuleInstance():
+class RuleMatch():
     """ An actual instance (or match) of a specific rule"""
     def __init__(self, rule, fidx, offset):
         self.rule = rule
         self.fidx = fidx
         self.offset = offset
         self.symbolic_parameters = []
+    def __str__(self):
+        return f"______ {self.rule.name} ______\nfunction: {self.fidx}\noffset: {self.offset}\ninstruction:{self.rule.target_instruction}"
 
 class Rule():
     """ Rule object, containing the rule """

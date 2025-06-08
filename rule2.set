@@ -1,0 +1,2 @@
+rule1 | i32.add: arg1, arg2; arg1 > 0, arg2 > 0, arg1 < 2147483647, arg2 < 2147483647, arg1+arg2 < arg1 # comment
+! rule1 
