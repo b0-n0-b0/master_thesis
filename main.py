@@ -1,40 +1,10 @@
-from utils.rule_parser import RuleSet, RuleMatch
 import argparse
 import subprocess
 import os 
-from collections import defaultdict
-from itertools import product
+from utils.rule_parser import RuleSet, RuleMatch
+from utils.collections_utils import generate_ordered_valid_combinations, is_valid_rule_match_sequence
+from utils.wassail_parse import parse_wassail_output
 from solver import run_symbolic_execution
-
-# generate all the valid combinations for a sequence of rules
-def generate_ordered_valid_combinations(data_map, check_function, key_order):
-    keys = list(data_map.keys())
-    value_lists = [data_map[key] for key in keys]
-
-    for values in product(*value_lists):
-        combo = dict(zip(keys, values))
-        ordered = reorder_combination(combo, key_order)
-        if check_function(ordered):
-            yield ordered
-# valid sequence check
-def is_valid_match_sequence(combination):
-    last_fidx = None
-    last_offset = None
-    for rule_match in combination.values():
-        # instructions must be part of the same function
-        if last_fidx == None:
-            last_fidx = rule_match.fidx
-        elif last_fidx != rule_match.fidx:
-            return False
-        # instruction in the same function must be in sequence
-        if last_offset == None:
-            last_offset = rule_match.offset
-        elif last_offset >= rule_match.offset:
-            return False
-    return True
-# Reorder combination
-def reorder_combination(combo, key_order):
-    return {key: combo[key] for key in key_order if key in combo}
 
 def main():
     parser = argparse.ArgumentParser(description="...")
@@ -50,21 +20,12 @@ def main():
         wassail_input = wassail_input +  rule.target_instruction + ","
     wassail_input = wassail_input[:-1]
     # TODO: remove path and set $PATH before
-    result = subprocess.run(["/home/b0n0b0/thesis/wassail-master_thesis/_build/install/default/bin/wassail",f"apply-rule",args.module ,wassail_input], capture_output=True)
+    result = subprocess.run(["/home/b0n0b0/thesis/wassail-master_thesis/_build/install/default/bin/wassail","apply-rule",args.module ,wassail_input], capture_output=True)
     # NOTE: parse found matches from wassail
-    matches = result.stdout.decode('utf-8').strip().split("\n")
-    rule_matches = defaultdict(list)
-    for match in matches:
-        rule_id, info = match.split("|")
-        rule_id = int(rule_id)
-        fidx, offset = info.split(",")
-        fidx = int(fidx)
-        offset = int(offset)
-        rule_matches[rule_id].append(RuleMatch(rule_set.rules[rule_id], fidx, offset))
-    
-    #NOTE: generate all valid combinations
+    rule_matches = parse_wassail_output(result, rule_set)
+    # NOTE: generate all valid combinations and run the symbolic execution for each of those
     key_order = rule_set.application_order
-    for combo in generate_ordered_valid_combinations(rule_matches, is_valid_match_sequence, key_order):
+    for combo in generate_ordered_valid_combinations(rule_matches, is_valid_rule_match_sequence, key_order):
         rule_match_list = []
         for value in combo.values():
             rule_match_list.append(value)

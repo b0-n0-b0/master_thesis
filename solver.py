@@ -57,7 +57,7 @@ class InstructionHookPlugin(Plugin):
             current_rule = self.rule_instances[self.current_rule_idx]
             if current_instruction.funcaddr == current_rule.fidx and current_instruction.offset == current_rule.offset:
                 symbolic_parameters = []
-                # create parameters starting from the rule
+                # NOTE: declare parameters starting from the rule
                 # we reverse the array because WASM is a stack machine (last pushed value is the last param of the instruction)
                 # match target instruction
                 for idx, param in enumerate(current_rule.rule.parameters[::-1]):
@@ -65,7 +65,7 @@ class InstructionHookPlugin(Plugin):
                     locals()[param] = state.stack.peek_nth(idx+1)
                 for constraint in current_rule.rule.constraints:
                     state.constrain(eval(constraint))
-                # all constraints where applied
+                # NOTE: all constraints where applied, we are ready to try and concretize the state
                 if self.current_rule_idx == len(self.rule_instances)-1:
                     if (state.is_feasible()):
                         # for c in state._constraints:
@@ -75,7 +75,7 @@ class InstructionHookPlugin(Plugin):
                             solved = state.solve_n(sym,1)
                             print(f"solution for {sym.name}: {solved}")
                     # print(dir(state))
-                # we found the rule match, we can proceed to the next one
+                # NOTE: we found the rule match, we can proceed to the next one
                 self.current_rule_idx += 1
 
     def will_execute_instruction_callback(self, state, *args):
@@ -101,13 +101,15 @@ def param_generator(state, params):
 def run_symbolic_execution(module, rule_match_list, function_index):
     # Initialize ManticoreWASM with the target WebAssembly file
     m = ManticoreWASM("../tests/hello_world/hello_world.wasm")
+    # TODO: what about non-numeric parameters? 
+    types = m.get_params_by_func_index(function_index)[0]
+    param_specs = []
+    for idx, type in enumerate(types):
+        param_specs.append(Param(f"param_{idx}", type.get_size()))
     # Register our instruction execution hook
     # The Rule is provided by the RuleSet, fidx and offset are provided by the wassail output 
     m.register_plugin(InstructionHookPlugin(rule_match_list))
     # # Call the function with symbolic arguments
-    # params name and size will be returned by wassail 
-    # TODO: retrieve parameters of the function and function index
-    param_specs = [Param("a", 32),Param("b", 32)]
     m.invoke_by_index(function_index, param_generator, param_specs)
     m.run()
     m.finalize()
