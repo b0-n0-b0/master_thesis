@@ -75,5 +75,5 @@ class RuleSet():
         return output
 
 if __name__ == "__main__":
-    rule_set = RuleSet("../rule.set")
+    rule_set = RuleSet("../test.rule")
     print(rule_set)

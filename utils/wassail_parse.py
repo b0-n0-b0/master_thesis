@@ -1,4 +1,4 @@
-from utils.rule_parser import RuleMatch
+from utils.rule_parser_lark import RuleMatch
 from collections import defaultdict
 
 def parse_wassail_output(output, rule_set):

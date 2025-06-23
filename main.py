@@ -1,7 +1,7 @@
 import argparse
 import subprocess
 import os 
-from utils.rule_parser import RuleSet, RuleMatch
+from utils.rule_parser_lark import parse_rule_file
 from utils.collections_utils import generate_ordered_valid_combinations, is_valid_rule_match_sequence
 from utils.wassail_parse import parse_wassail_output
 from solver import run_symbolic_execution
@@ -12,7 +12,7 @@ def main():
     parser.add_argument("module", help="Path of the file containing the WASM module to analyze")
 
     args = parser.parse_args()
-    rule_set = RuleSet(args.rules)
+    rule_set = parse_rule_file(args.rules)
     target_instructions = []
     # NOTE: generate input for wassail
     wassail_input = ""

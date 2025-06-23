@@ -1,6 +1,6 @@
 from manticore.wasm import ManticoreWASM, types
 from manticore.core.plugin import Plugin
-from utils.rule_parser import RuleMatch, Rule
+from utils.rule_parser_lark import RuleMatch, Rule
 
 class Param():
     def __init__(self, name, size):
@@ -69,10 +69,10 @@ class InstructionHookPlugin(Plugin):
                 if self.current_rule_idx == len(self.rule_instances)-1:
                     if (state.is_feasible()):
                         # for c in state._constraints:
-                        #     print(c)
-                        #     state.constrain(c)
+                            # print(c)
+                            # state.constrain(c)
                         for sym in state.input_symbols:
-                            solved = state.solve_n(sym,1)
+                            solved = state.solve_one(sym)
                             print(f"solution for {sym.name}: {solved}")
                     # print(dir(state))
                 # NOTE: we found the rule match, we can proceed to the next one
@@ -81,8 +81,9 @@ class InstructionHookPlugin(Plugin):
     def will_execute_instruction_callback(self, state, *args):
         # self.example_solver_for_add_if(state, *args)
         instruction = args[0]
-        self.generic_solver(state, instruction)
         # print(f"In function: {instruction.funcaddr} executing {instruction.mnemonic} @ offset {instruction.offset}")
+        self.generic_solver(state, instruction)
+
     def will_call_function_callback(self, state, *args):
         called_function = args[0]
         print(f"will call function {called_function}")
@@ -113,20 +114,17 @@ def run_symbolic_execution(module, rule_match_list, function_index):
     m.invoke_by_index(function_index, param_generator, param_specs)
     m.run()
     m.finalize()
+
 if __name__ == "__main__":
-    # Initialize ManticoreWASM with the target WebAssembly file
     m = ManticoreWASM("../tests/hello_world/hello_world.wasm")
-    # Register our instruction execution hook
-    # The Rule is provided by the RuleSet, fidx and offset are provided by the wassail output 
     m.register_plugin(InstructionHookPlugin([
-        # RuleMatch(Rule("name","i32.add",["arg1", "arg2"],["arg1 == 11"]),fidx=2, offset=2),
         RuleMatch(Rule("name","i32.add",["arg3", "arg4"],["arg3 == 19", "arg3 > 0"]),fidx=2, offset=6),
         RuleMatch(Rule("name","i32.add",["arg5", "arg6"],["arg5 != 0"]),fidx=2, offset=20),
-        # RuleMatch(Rule("name","i32.add",["arg5", "arg6"],["arg5 != arg6"]),fidx=2, offset=6) # this makes it unsolvable
         ]))
-    # # Call the function with symbolic arguments
-    # params name and size will be returned by wassail 
-    param_specs = [Param("a", 32),Param("b", 32)]
+    types = m.get_params_by_func_index(function_index)[0]
+    param_specs = []
+    for idx, type in enumerate(types):
+        param_specs.append(Param(f"param_{idx}", type.get_size()))
     m.invoke_by_index(2, param_generator, param_specs)
     m.run()
     m.finalize()

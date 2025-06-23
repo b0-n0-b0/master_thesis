@@ -1,0 +1,29 @@
+// Lark grammar for the described rules file format
+
+start: rule_line* rule_sequence_line
+
+// Rule line definition
+rule_line: RULE_NAME "|" MNEMONIC ":" param_name_list ";" param_condition_list COMMENT? NEWLINE
+
+// Rule sequence line definition (must be last)
+rule_sequence_line: "!" _WS? RULE_NAME (">" RULE_NAME)* COMMENT? NEWLINE?
+
+// Rule name and mnemonic
+RULE_NAME: /[a-zA-Z][a-zA-Z0-9_]*/
+MNEMONIC: /[a-zA-Z0-9_.]+/
+
+// Parameters
+param_name_list: param_name ("," param_name)*
+param_name: /[a-zA-Z][a-zA-Z0-9_]*/
+
+// Conditions
+param_condition_list: param_condition ("," param_condition)*
+param_condition: /[^#,\n\r]+/
+
+// Comments and spacing
+COMMENT: /#[^\n]*/
+_WS: /[ \t]+/
+NEWLINE: /\r?\n/
+
+%ignore _WS
+%ignore COMMENT
