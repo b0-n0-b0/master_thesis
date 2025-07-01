@@ -1,0 +1,6 @@
+digraph "Call graph" {
+node0 [shape=record, label="{0}"];
+node1 [shape=record, label="{1}"];
+node1 -> node0 ;
+
+}
