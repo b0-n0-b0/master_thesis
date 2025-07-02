@@ -5,7 +5,7 @@ from utils.rule_parser_lark import parse_rule_file
 from utils.collections_utils import generate_ordered_valid_combinations, is_valid_rule_match_sequence
 from utils.wassail_parse import parse_wassail_output
 from utils.dot_file_utils import load_dot_file, build_target_subgraph
-from solver import run_symbolic_execution_instruction_plugin, run_symbolic_execution_call_plugin
+from solver import run_symbolic_execution, InstructionHookPlugin, CallHookPlugin
 
 def main():
     parser = argparse.ArgumentParser(description="...")
@@ -36,22 +36,24 @@ def main():
         # for match in rule_match_list:
         #     print(match)
         # print(f"Symbolic execution of function {rule_match_list[0].fidx}")
-        constraints = run_symbolic_execution_instruction_plugin(args.module, rule_match_list,rule_match_list[0].fidx)
+        constraints = run_symbolic_execution(args.module, rule_match_list[0].fidx, InstructionHookPlugin(rule_match_list))
         print(f"Constraints to match the applied rules:")
         print(f"_______________constraints for function {rule_match_list[0].fidx}_______________\n")
         for c in constraints:
             print(c)
         
-        # TODO: once found the constraints for each potential combination traverse the CFG in order to create an annotated CFG 
         sub_cfg = build_target_subgraph(cfg, f"node{rule_match_list[0].fidx}")
         edges = sub_cfg.get_edges()
         for edge in edges:
-            constraints = run_symbolic_execution_call_plugin(args.module,int(edge.get_source().strip('"').strip("node")), rule_match_list[0].fidx)
+            src_function = int(edge.get_source().strip('"').strip("node"))
+            constraints = run_symbolic_execution(args.module, src_function, CallHookPlugin(rule_match_list[0].fidx))
             edge.set_comment(constraints)
         for edge in edges:
             print(f"In order to go from function {edge.get_source().strip('node')} to function {edge.get_destination().strip('node')} the constraints are:")
             for idx, c in enumerate(edge.get_comment()):
                 print(f"_______________constraint set {idx+1}_______________")
                 print(c)
+    # print(sub_cfg)
+    # sub_cfg.write_raw('output.dot')
 if __name__ == "__main__":
     main()

@@ -64,7 +64,7 @@ class CallHookPlugin(Plugin):
 
 
 
-# in order to invoke a wasm fuction with symbolic parameters, 
+# In order to invoke a wasm fuction with symbolic parameters, 
 # we use a function that returns an array of symbolic values 
 # with types compatibles with the function signature
 def param_generator(state, params):
@@ -73,41 +73,21 @@ def param_generator(state, params):
         sym_params.append(state.new_symbolic_value(param.size, param.name))
     return sym_params
 
-def run_symbolic_execution_instruction_plugin(module, rule_match_list, function_index):
-    # Initialize ManticoreWASM with the target WebAssembly file
+def run_symbolic_execution(module, function_index, plugin):
+    # NOTE: Initialize ManticoreWASM with the target WebAssembly file
     m = ManticoreWASM(module)
-    # TODO: what about non-numeric parameters? 
     types = m.get_params_by_func_index(function_index)[0]
     param_specs = []
     for idx, type in enumerate(types):
         param_specs.append(Param(f"param_{idx}", type.get_size()))
-    # Register our instruction execution hook
-    # The Rule is provided by the RuleSet, fidx and offset are provided by the wassail output 
-    hook_plugin = InstructionHookPlugin(rule_match_list)
-    m.register_plugin(hook_plugin)
-    # # Call the function with symbolic arguments
+    # NOTE: Register our instruction execution hook
+    # NOTE: The Rule is provided by the RuleSet, fidx and offset are provided by the wassail output 
+    m.register_plugin(plugin)
+    # NOTE: Call the function with symbolic arguments
     m.invoke_by_index(function_index, param_generator, param_specs)
     m.run()
     m.finalize()
-    return hook_plugin.final_constraints
-
-def run_symbolic_execution_call_plugin(module, function_index, target_function_call):
-    # Initialize ManticoreWASM with the target WebAssembly file
-    m = ManticoreWASM(module)
-    # TODO: what about non-numeric parameters? 
-    types = m.get_params_by_func_index(function_index)[0]
-    param_specs = []
-    for idx, type in enumerate(types):
-        param_specs.append(Param(f"param_{idx}", type.get_size()))
-    # Register our instruction execution hook
-    # The Rule is provided by the RuleSet, fidx and offset are provided by the wassail output 
-    call_plugin = CallHookPlugin(target_function_call)
-    m.register_plugin(call_plugin)
-    # # Call the function with symbolic arguments
-    m.invoke_by_index(function_index, param_generator, param_specs)
-    m.run()
-    m.finalize()
-    return call_plugin.final_constraints
+    return plugin.final_constraints
 
 if __name__ == "__main__":
     m = ManticoreWASM("../tests/hello_world/hello_world.wasm")

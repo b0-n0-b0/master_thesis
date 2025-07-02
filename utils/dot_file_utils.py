@@ -61,10 +61,6 @@ def build_target_subgraph(graph, target_node):
     paths = find_all_paths_to_target(adj, roots, target_node)
     
     if paths:
-        # print(f"Found {len(paths)} path(s) to {target_node}.")
-        # for p in paths:
-        #     print(" -> ".join(p))
-    
         subgraph = build_subgraph_from_paths(paths)
         return subgraph
     else:
