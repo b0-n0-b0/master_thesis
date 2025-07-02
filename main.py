@@ -46,7 +46,7 @@ def main():
         sub_cfg = build_target_subgraph(cfg, f"node{rule_match_list[0].fidx}")
         edges = sub_cfg.get_edges()
         for edge in edges:
-            constraints = run_symbolic_execution_call_plugin(args.module,int(edge.get_source().strip('"').strip("node")))
+            constraints = run_symbolic_execution_call_plugin(args.module,int(edge.get_source().strip('"').strip("node")), rule_match_list[0].fidx)
             edge.set_comment(constraints)
         for edge in edges:
             print(f"In order to go from function {edge.get_source().strip('node')} to function {edge.get_destination().strip('node')} the constraints are:")

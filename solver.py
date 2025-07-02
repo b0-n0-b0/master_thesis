@@ -50,13 +50,14 @@ class InstructionHookPlugin(Plugin):
         self.generic_solver(state, instruction)
 
 class CallHookPlugin(Plugin):
-    def __init__(self):
+    def __init__(self, target_function_call):
         super().__init__()
+        self.target_call = target_function_call
         # solve for the input symbols once these are over
         self.final_constraints = []
     def will_call_function_callback(self, state, *args):
         called_function = args[0]
-        if (state.is_feasible()):
+        if (called_function == self.target_call and state.is_feasible()):
             # NOTE: can we actually have more then one list of constraints?
             self.final_constraints.append(state._constraints)
         # print(f"will call function {called_function}")
@@ -90,7 +91,7 @@ def run_symbolic_execution_instruction_plugin(module, rule_match_list, function_
     m.finalize()
     return hook_plugin.final_constraints
 
-def run_symbolic_execution_call_plugin(module, function_index):
+def run_symbolic_execution_call_plugin(module, function_index, target_function_call):
     # Initialize ManticoreWASM with the target WebAssembly file
     m = ManticoreWASM(module)
     # TODO: what about non-numeric parameters? 
@@ -100,7 +101,7 @@ def run_symbolic_execution_call_plugin(module, function_index):
         param_specs.append(Param(f"param_{idx}", type.get_size()))
     # Register our instruction execution hook
     # The Rule is provided by the RuleSet, fidx and offset are provided by the wassail output 
-    call_plugin = CallHookPlugin()
+    call_plugin = CallHookPlugin(target_function_call)
     m.register_plugin(call_plugin)
     # # Call the function with symbolic arguments
     m.invoke_by_index(function_index, param_generator, param_specs)
