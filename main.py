@@ -21,13 +21,13 @@ def main():
         wassail_input = wassail_input +  rule.target_instruction + ","
     wassail_input = wassail_input[:-1]
     # TODO: remove path and set $PATH before
-    result = subprocess.run(["/home/b0n0b0/thesis/wassail-master_thesis/_build/install/default/bin/wassail","apply-rule",args.module ,wassail_input], capture_output=True)
+    result = subprocess.run(["wassail","apply-rule",args.module ,wassail_input], capture_output=True)
     # NOTE: parse found matches from wassail
     rule_matches = parse_wassail_output(result, rule_set)
     # NOTE: generate all valid combinations and run the symbolic execution for each of those
     key_order = rule_set.application_order
     # NOTE: generate CFG
-    subprocess.run(["/home/b0n0b0/thesis/wassail-master_thesis/_build/install/default/bin/wassail","callgraph",args.module, "cfg.dot"], capture_output=True)
+    subprocess.run(["wassail","callgraph",args.module, "cfg.dot"], capture_output=True)
     cfg = load_dot_file("cfg.dot")
     for combo in generate_ordered_valid_combinations(rule_matches, is_valid_rule_match_sequence, key_order):
         rule_match_list = []
@@ -46,14 +46,15 @@ def main():
         edges = sub_cfg.get_edges()
         for edge in edges:
             src_function = int(edge.get_source().strip('"').strip("node"))
-            constraints = run_symbolic_execution(args.module, src_function, CallHookPlugin(rule_match_list[0].fidx))
+            dst_function = int(edge.get_destination().strip('"').strip("node"))
+            constraints = run_symbolic_execution(args.module, src_function, CallHookPlugin(dst_function))
             edge.set_comment(constraints)
         for edge in edges:
             print(f"In order to go from function {edge.get_source().strip('node')} to function {edge.get_destination().strip('node')} the constraints are:")
             for idx, c in enumerate(edge.get_comment()):
                 print(f"_______________constraint set {idx+1}_______________")
                 print(c)
-    # print(sub_cfg)
+    print(sub_cfg)
     # sub_cfg.write_raw('output.dot')
 if __name__ == "__main__":
     main()

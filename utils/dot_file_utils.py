@@ -36,6 +36,8 @@ def find_all_paths_to_target(adj, roots, target):
         dfs(root, [root])
     return paths
 
+# TODO: change this
+# as per now if an exported function A calls another exported function B, B is not considered as a root, but it should be
 def build_subgraph_from_paths(paths):
     new_graph = pydot.Dot(graph_type='digraph')
     nodes = set()
@@ -58,6 +60,7 @@ def build_subgraph_from_paths(paths):
 def build_target_subgraph(graph, target_node):
     adj, rev_adj = build_adjacency_and_reverse(graph)
     roots = find_roots(adj, rev_adj)
+    print(roots)
     paths = find_all_paths_to_target(adj, roots, target_node)
     
     if paths:
