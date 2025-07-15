@@ -36,9 +36,7 @@ def find_all_paths_to_target(adj, roots, target):
         dfs(root, [root])
     return paths
 
-# TODO: change this
-# as per now if an exported function A calls another exported function B, B is not considered as a root, but it should be
-def build_subgraph_from_paths(paths):
+def build_subgraph_from_paths(paths, exported_nodes):
     new_graph = pydot.Dot(graph_type='digraph')
     nodes = set()
     edges = set()
@@ -50,28 +48,30 @@ def build_subgraph_from_paths(paths):
                 edges.add((path[i - 1], path[i]))
 
     for node in nodes:
-        new_graph.add_node(pydot.Node(node))
+        dot_node = pydot.Node(node)
+        if node in exported_nodes:
+            dot_node.set_comment("exported")
+        new_graph.add_node(dot_node)
 
     for src, dst in edges:
         new_graph.add_edge(pydot.Edge(src, dst))
 
     return new_graph
 
-def build_target_subgraph(graph, target_node):
+def build_target_subgraph(graph, target_node, exported_nodes):
     adj, rev_adj = build_adjacency_and_reverse(graph)
     roots = find_roots(adj, rev_adj)
-    print(roots)
     paths = find_all_paths_to_target(adj, roots, target_node)
     
     if paths:
-        subgraph = build_subgraph_from_paths(paths)
+        subgraph = build_subgraph_from_paths(paths, exported_nodes)
         return subgraph
     else:
         return None
 
-if __name__ == "__main__":
-    dot_file = "test.dot"
-    target_node = "node0"
-
-    graph = load_dot_file(dot_file)
-    build_target_subgraph(graph, target_node)
+# if __name__ == "__main__":
+#     dot_file = "test.dot"
+#     target_node = "node0"
+    
+#     graph = load_dot_file(dot_file)
+#     build_target_subgraph(graph, target_node)
