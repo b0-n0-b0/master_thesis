@@ -7,15 +7,16 @@ def parse_wassail_output(output, rule_set):
     matches = output.stdout.decode('utf-8').strip().split("\n")
     rule_matches = defaultdict(list)
     for match in matches:
-        rule_id, info = match.split("|")
-        fidx, offset = info.split(",")
+        if len(match) > 1:
+            rule_id, info = match.split("|")
+            fidx, offset = info.split(",")
 
-        rule_id = int(rule_id)
-        fidx = int(fidx)
-        offset = int(offset)
+            rule_id = int(rule_id)
+            fidx = int(fidx)
+            offset = int(offset)
 
-        matched_rule = rule_set.rules[rule_id] 
-        rule_matches[rule_id].append(RuleMatch(matched_rule, fidx, offset))
+            matched_rule = rule_set.rules[rule_id] 
+            rule_matches[rule_id].append(RuleMatch(matched_rule, fidx, offset))
     return rule_matches
     
 def get_rule_matches(rule_set, module):
@@ -23,19 +24,25 @@ def get_rule_matches(rule_set, module):
     for rule in rule_set.rules:
         wassail_input = wassail_input +  rule.target_instruction + ","
     wassail_input = wassail_input[:-1]
-    result = subprocess.run(["wassail","apply-rule", module ,wassail_input], capture_output=True)
+    output = subprocess.run(["wassail","apply-rule", module ,wassail_input], capture_output=True)
+    if len(output.stderr) > 0:
+        print(f"[WARNING]: unexpected output from wassail:\n{output.stderr.decode('utf-8')}")
     # NOTE: parse found matches from wassail
-    rule_matches = parse_wassail_output(result, rule_set)
+    rule_matches = parse_wassail_output(output, rule_set)
     return rule_matches
 
 def get_exported_nodes(module):
     output = subprocess.run(["wassail","exports",module], capture_output=True)
+    if len(output.stderr) > 0:
+        print(f"[WARNING]: unexpected output from wassail:\n{output.stderr.decode('utf-8')}")
     exported_nodes = []
     for line in output.stdout.decode('utf-8').split("\n")[:-1]:
         exported_nodes.append("node"+line.split("\t")[0])
     return exported_nodes
 
 def get_cfg(module):
-    subprocess.run(["wassail","callgraph", module, "cfg.dot"], capture_output=True)
+    output = subprocess.run(["wassail","callgraph", module, "cfg.dot"], capture_output=True)
+    if len(output.stderr) > 0:
+        print(f"[WARNING]: unexpected output from wassail:\n{output.stderr.decode('utf-8')}")
     cfg = load_dot_file("cfg.dot")
     return cfg

@@ -15,6 +15,9 @@ def main():
     args = parser.parse_args()
     rule_set = parse_rule_file(args.rules)
     rule_matches = get_rule_matches(rule_set, args.module)
+    if len(rule_matches) == 0:
+        print("No match for the provided rule was found, please check the rule file, the wasm module input and the wassail compatibility")
+        return
     # NOTE: generate all valid combinations and run the symbolic execution for each of those
     key_order = rule_set.application_order
     # NOTE: generate CFG
@@ -45,7 +48,7 @@ def main():
             for idx, c in enumerate(edge.get_comment()):
                 print(f"_______________constraint set {idx+1}_______________")
                 print(c)
-    print(sub_cfg)
+    # print(sub_cfg)
     # sub_cfg.write_raw('output.dot')
 if __name__ == "__main__":
     main()
