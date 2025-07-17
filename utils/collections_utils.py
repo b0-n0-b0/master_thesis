@@ -5,7 +5,6 @@ from itertools import product
 def generate_ordered_valid_combinations(data_map, check_function, key_order):
     keys = list(data_map.keys())
     value_lists = [data_map[key] for key in keys]
-
     for values in product(*value_lists):
         combo = dict(zip(keys, values))
         ordered = reorder_combination(combo, key_order)

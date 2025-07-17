@@ -39,6 +39,8 @@ class InstructionHookPlugin(Plugin):
                         # for sym in state.input_symbols:
                         #     solved = state.solve_one(sym)
                         #     print(f"solution for {sym.name}: {solved}")
+                    else:
+                        print("not feasible", flush=True)
                     # print(dir(state))
                 # NOTE: we found the rule match, we can proceed to the next one
                 self.current_rule_idx += 1
@@ -46,7 +48,7 @@ class InstructionHookPlugin(Plugin):
     def will_execute_instruction_callback(self, state, *args):
         # self.example_solver_for_add_if(state, *args)
         instruction = args[0]
-        # print(f"In function: {instruction.funcaddr} executing {instruction.mnemonic} @ offset {instruction.offset}")
+        # print(f"In function: {instruction.funcaddr} executing {instruction.mnemonic} @ offset {instruction.offset}", flush=True)
         self.generic_solver(state, instruction)
 
 class CallHookPlugin(Plugin):

@@ -26,7 +26,7 @@ def get_rule_matches(rule_set, module):
     wassail_input = wassail_input[:-1]
     output = subprocess.run(["wassail","apply-rule", module ,wassail_input], capture_output=True)
     if len(output.stderr) > 0:
-        print(f"[WARNING]: unexpected output from wassail:\n{output.stderr.decode('utf-8')}")
+        print(f"[WARNING]: unexpected output from wassail:\n{output.stderr.decode('utf-8')}", flush=True)
     # NOTE: parse found matches from wassail
     rule_matches = parse_wassail_output(output, rule_set)
     return rule_matches
@@ -34,7 +34,7 @@ def get_rule_matches(rule_set, module):
 def get_exported_nodes(module):
     output = subprocess.run(["wassail","exports",module], capture_output=True)
     if len(output.stderr) > 0:
-        print(f"[WARNING]: unexpected output from wassail:\n{output.stderr.decode('utf-8')}")
+        print(f"[WARNING]: unexpected output from wassail:\n{output.stderr.decode('utf-8')}", flush=True)
     exported_nodes = []
     for line in output.stdout.decode('utf-8').split("\n")[:-1]:
         exported_nodes.append("node"+line.split("\t")[0])
@@ -43,6 +43,6 @@ def get_exported_nodes(module):
 def get_cfg(module):
     output = subprocess.run(["wassail","callgraph", module, "cfg.dot"], capture_output=True)
     if len(output.stderr) > 0:
-        print(f"[WARNING]: unexpected output from wassail:\n{output.stderr.decode('utf-8')}")
+        print(f"[WARNING]: unexpected output from wassail:\n{output.stderr.decode('utf-8')}", flush=True)
     cfg = load_dot_file("cfg.dot")
     return cfg

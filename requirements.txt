@@ -9,7 +9,7 @@ future==1.0.0
 importlib_resources==6.4.5
 intervaltree==3.1.0
 lark==1.2.2
--e git+https://git@github.com/b0-n0-b0/manticore-master_thesis.git@93d620c7c2c0d63b133e558256c41b0b06e9827d#egg=manticore
+-e git+https://git@github.com/b0-n0-b0/manticore-master_thesis.git#egg=manticore
 packaging==25.0
 ply==3.11
 prettytable==3.11.0
