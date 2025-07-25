@@ -27,21 +27,26 @@ def main():
         for value in combo.values():
             rule_match_list.append(value)
         for rule_match in rule_match_list:
-            print(f"Symbolic execution of function {rule_match.fidx} with target:\n{rule_match}", flush=True)
-            constraints = run_symbolic_execution(args.module, rule_match.fidx, InstructionHookPlugin(rule_match_list))
+            current_fidx = rule_match.fidx
+            print(f"Symbolic execution of function {current_fidx} with target:\n{rule_match}\n", flush=True)
+            constraints = run_symbolic_execution(args.module, current_fidx, InstructionHookPlugin(rule_match_list))
             if len(constraints) == 0:
                 continue
             print(f"Constraints to match the applied rules:", flush=True)
-            print(f"_______________constraints for function {rule_match.fidx}_______________\n", flush=True)
+            print(f"_______________constraints for function {current_fidx}_______________\n", flush=True)
             for c in constraints:
                 print(c, flush=True)
             
             exported_nodes = get_exported_nodes(args.module)
-            sub_cfg = build_target_subgraph(cfg, f"node{rule_match.fidx}", exported_nodes)
+            print("before build subcfg", flush=True)
+            sub_cfg = build_target_subgraph(cfg, f"node{current_fidx}", exported_nodes)
+            print("after build subcfg", flush=True)
             edges = sub_cfg.get_edges()
+            print(f"the subtree for function {current_fidx} has {len(edges)} edges", flush=True)
             for edge in edges:
                 src_function = int(edge.get_source().strip('"').strip("node"))
                 dst_function = int(edge.get_destination().strip('"').strip("node"))
+                print(f"running symbolic execution in order to get from {src_function} to {dst_function}", flush=True)
                 constraints = run_symbolic_execution(args.module, src_function, CallHookPlugin(dst_function))
                 edge.set_comment(constraints)
             for edge in edges:
@@ -49,8 +54,7 @@ def main():
                 for idx, c in enumerate(edge.get_comment()):
                     print(f"_______________constraint set {idx+1}_______________", flush=True)
                     print(c, flush=True)
-            return
-    # print(sub_cfg)
+            print(sub_cfg)
     # sub_cfg.write_raw('output.dot')
 if __name__ == "__main__":
     main()

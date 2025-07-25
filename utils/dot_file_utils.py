@@ -14,6 +14,7 @@ def build_adjacency_and_reverse(graph):
         rev_adj.setdefault(dst, []).append(src)
     return adj, rev_adj
 
+# NOTE: not used
 def find_roots(adj, rev_adj):
     all_nodes = set(adj.keys()) | {n for dests in adj.values() for n in dests}
     non_roots = set(rev_adj.keys())
@@ -60,7 +61,8 @@ def build_subgraph_from_paths(paths, exported_nodes):
 
 def build_target_subgraph(graph, target_node, exported_nodes):
     adj, rev_adj = build_adjacency_and_reverse(graph)
-    roots = find_roots(adj, rev_adj)
+    # roots = find_roots(adj, rev_adj)
+    roots = exported_nodes
     paths = find_all_paths_to_target(adj, roots, target_node)
     
     if paths:
@@ -68,10 +70,3 @@ def build_target_subgraph(graph, target_node, exported_nodes):
         return subgraph
     else:
         return None
-
-# if __name__ == "__main__":
-#     dot_file = "test.dot"
-#     target_node = "node0"
-    
-#     graph = load_dot_file(dot_file)
-#     build_target_subgraph(graph, target_node)
