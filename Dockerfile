@@ -19,6 +19,13 @@ RUN apt-get update && apt-get install -y \
 # Install opam
 RUN curl -fsSL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh | sh
 
+# NOTE: non-interactive, not sure why but on VPSs the previous one does not work, let's skip to this one
+# Manually install a specific OPAM version non-interactively
+# ENV OPAM_VERSION=2.3.0
+# RUN curl -fsSL https://github.com/ocaml/opam/releases/download/${OPAM_VERSION}/opam-${OPAM_VERSION}-x86_64-linux \
+#     -o /usr/local/bin/opam && \
+#     chmod +x /usr/local/bin/opam
+
 # Initialize opam (non-interactive, no sandbox)
 ENV OPAMYES=true
 RUN opam init --disable-sandboxing -a -y && \
