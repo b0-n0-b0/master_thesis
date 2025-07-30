@@ -9,8 +9,10 @@ from solver import run_symbolic_execution, InstructionHookPlugin, CallHookPlugin
 
 def symbolic_exec_task(args):
     """Wrapper for parallel symbolic execution with InstructionHookPlugin"""
-    module, fidx, rule_match_list = args
-    constraints = run_symbolic_execution(module, fidx, InstructionHookPlugin(rule_match_list))
+    module, fidx, valid_match_sequence = args
+    for match in valid_match_sequence:
+        print(f"________________________\nSymbolic execution of function {fidx} with target:\n{match}\n\n________________________", flush=True)
+    constraints = run_symbolic_execution(module, fidx, InstructionHookPlugin(valid_match_sequence))
     return (fidx, constraints)
 
 def edge_exec_task(args):
@@ -39,12 +41,12 @@ def main():
     # Step 1: Prepare tasks for symbolic execution of rule matches
     symbolic_tasks = []
     for combo in generate_ordered_valid_combinations(rule_matches, is_valid_rule_match_sequence, key_order):
-        rule_match_list = list(combo.values())
-        for rule_match in rule_match_list:
-            symbolic_tasks.append((args.module, rule_match.fidx, rule_match_list))
+        valid_match_sequence = list(combo.values()) # contains a sequence of matches that respects the order enforced by the rule file
+        for rule_match in valid_match_sequence:
+            symbolic_tasks.append((args.module, rule_match.fidx, valid_match_sequence))
 
     # Step 2: Run symbolic executions in parallel
-    with Pool(processes=min(cpu_count()/3, len(symbolic_tasks))) as pool:
+    with Pool(processes=min(cpu_count()//3, len(symbolic_tasks))) as pool:
         symbolic_results = pool.map(symbolic_exec_task, symbolic_tasks)
 
     # Step 3: Collect results
