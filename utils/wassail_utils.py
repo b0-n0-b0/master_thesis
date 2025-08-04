@@ -24,7 +24,7 @@ def get_rule_matches(rule_set, module):
     for rule in rule_set.rules:
         wassail_input = wassail_input +  rule.target_instruction + ","
     wassail_input = wassail_input[:-1]
-    output = subprocess.run(["wassail","apply-rule", module ,wassail_input], capture_output=True)
+    output = subprocess.run(["wassail","apply-rule", module, wassail_input], capture_output=True)
     if len(output.stderr) > 0:
         print(f"[WARNING]: unexpected output from wassail:\n{output.stderr.decode('utf-8')}", flush=True)
     # NOTE: parse found matches from wassail

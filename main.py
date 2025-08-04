@@ -12,8 +12,12 @@ def symbolic_exec_task(args):
     module, fidx, valid_match_sequence = args
     for match in valid_match_sequence:
         print(f"________________________\nSymbolic execution of function {fidx} with target:\n{match}\n\n________________________", flush=True)
-    constraints = run_symbolic_execution(module, fidx, InstructionHookPlugin(valid_match_sequence))
-    return (fidx, constraints)
+    try:
+        constraints = run_symbolic_execution(module, fidx, InstructionHookPlugin(valid_match_sequence))
+        return (fidx, constraints)
+    except Exception as e:
+        print(e, flush=True)
+        return None
 
 def edge_exec_task(args):
     """Wrapper for parallel symbolic execution for control flow edges"""
@@ -31,15 +35,18 @@ def main():
     rule_matches = get_rule_matches(rule_set, args.module)
 
     if len(rule_matches) == 0:
-        print("No match for the provided rule was found...", flush=True)
+        print("No match for the provided rule was found", flush=True)
         return
-
+    
     key_order = rule_set.application_order
     cfg = get_cfg(args.module)
     found_constraints = {}
 
     # Step 1: Prepare tasks for symbolic execution of rule matches
     symbolic_tasks = []
+    rule_matches[0] = rule_matches[0][:100]
+    # print(rule_matches, flush=True)
+    # return
     for combo in generate_ordered_valid_combinations(rule_matches, is_valid_rule_match_sequence, key_order):
         valid_match_sequence = list(combo.values()) # contains a sequence of matches that respects the order enforced by the rule file
         for rule_match in valid_match_sequence:
@@ -57,7 +64,8 @@ def main():
                 print(c, flush=True)
             found_constraints.setdefault(fidx, []).append(constraints)
 
-    # TODO: optimize by removing the repetition of the subgraph generation
+    # TODO: We need to understand if the performance is better with parallelization of edge_tasks or information reuse
+    # as per now, if two tasks encounter the same edge with the same target_function, the symbolic execution to find the constraints is executed twice 
     # Step 4: Build subgraphs and prepare edge execution tasks
     exported_nodes = get_exported_nodes(args.module)
     edge_tasks = []
