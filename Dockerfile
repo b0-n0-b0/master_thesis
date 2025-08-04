@@ -43,11 +43,14 @@ RUN opam install .
 RUN eval $(opam env)
 
 WORKDIR /app
+
+COPY requirements.txt .
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
 # Copy Python app into the image
 COPY . /app
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
 
 # Entry point with argument support
 # ENTRYPOINT ["python", "main.py"]

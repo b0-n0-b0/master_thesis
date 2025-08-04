@@ -15,7 +15,7 @@ class InstructionHookPlugin(Plugin):
         # solve for the input symbols once these are over
         self.rule_instances = rule_instances
         self.current_rule_idx = 0
-        self.final_constraints = []
+        self.match_constraints = []
 
     # NOTE: apply at match
     def generic_solver(self, state, current_instruction):
@@ -27,7 +27,6 @@ class InstructionHookPlugin(Plugin):
                 # we reverse the array because WASM is a stack machine (last pushed value is the last param of the instruction)
                 # match target instruction
                 for idx, param in enumerate(current_rule.rule.parameters[::-1]):
-                    # print(f"param {param} -> {state.stack.peek_nth(idx+1)}")
                     locals()[param] = state.stack.peek_nth(idx+1)
                 for constraint in current_rule.rule.constraints:
                     state.constrain(eval(constraint))
@@ -35,12 +34,14 @@ class InstructionHookPlugin(Plugin):
                 if self.current_rule_idx == len(self.rule_instances)-1:
                     if (state.is_feasible()):
                         # NOTE: can we actually have more then one list of constraints?
-                        self.final_constraints.append(state._constraints)
+                        self.match_constraints.append(state._constraints)
                         # for sym in state.input_symbols:
                         #     solved = state.solve_one(sym)
                         #     print(f"solution for {sym.name}: {solved}")
                     else:
                         print("not feasible", flush=True)
+                    # NOTE: abandon the state once done
+                    state.abandon()
                     # print(dir(state))
                 # NOTE: we found the rule match, we can proceed to the next one
                 self.current_rule_idx += 1
@@ -56,12 +57,12 @@ class CallHookPlugin(Plugin):
         super().__init__()
         self.target_call = target_function_call
         # solve for the input symbols once these are over
-        self.final_constraints = []
+        self.match_constraints = []
     def will_call_function_callback(self, state, *args):
         called_function = args[0]
         if (called_function == self.target_call and state.is_feasible()):
             # NOTE: can we actually have more then one list of constraints?
-            self.final_constraints.append(state._constraints)
+            self.match_constraints.append(state._constraints)
         # print(f"will call function {called_function}")
 
 
@@ -89,7 +90,7 @@ def run_symbolic_execution(module, function_index, plugin):
     m.invoke_by_index(function_index, param_generator, param_specs)
     m.run()
     m.finalize()
-    return plugin.final_constraints
+    return plugin.match_constraints
 
 if __name__ == "__main__":
     m = ManticoreWASM("../tests/hello_world/hello_world.wasm")

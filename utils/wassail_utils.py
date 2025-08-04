@@ -41,8 +41,8 @@ def get_exported_nodes(module):
     return exported_nodes
 
 def get_cfg(module):
-    output = subprocess.run(["wassail","callgraph", module, "cfg.dot"], capture_output=True)
+    output = subprocess.run(["wassail","callgraph", module, "callgraph.dot"], capture_output=True)
     if len(output.stderr) > 0:
         print(f"[WARNING]: unexpected output from wassail:\n{output.stderr.decode('utf-8')}", flush=True)
-    cfg = load_dot_file("cfg.dot")
+    cfg = load_dot_file("callgraph.dot")
     return cfg

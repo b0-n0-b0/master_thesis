@@ -57,37 +57,38 @@ def main():
                 print(c, flush=True)
             found_constraints.setdefault(fidx, []).append(constraints)
 
-    # # Step 4: Build subgraphs and prepare edge execution tasks
-    # exported_nodes = get_exported_nodes(args.module)
-    # edge_tasks = []
+    # TODO: optimize by removing the repetition of the subgraph generation
+    # Step 4: Build subgraphs and prepare edge execution tasks
+    exported_nodes = get_exported_nodes(args.module)
+    edge_tasks = []
+    sub_callgraph_list = []
+    for fidx, _ in found_constraints.items():
+        sub_callgraph = build_target_subgraph(cfg, f"node{fidx}", exported_nodes)
+        edges = sub_callgraph.get_edges()
+        for edge in edges:
+            src_function = int(edge.get_source().strip('"').strip("node"))
+            dst_function = int(edge.get_destination().strip('"').strip("node"))
+            edge_tasks.append((args.module, src_function, dst_function))
+        sub_callgraph_list.append(sub_callgraph)
 
-    # for fidx, _ in found_constraints.items():
-    #     sub_cfg = build_target_subgraph(cfg, f"node{fidx}", exported_nodes)
-    #     edges = sub_cfg.get_edges()
-    #     for edge in edges:
-    #         src_function = int(edge.get_source().strip('"').strip("node"))
-    #         dst_function = int(edge.get_destination().strip('"').strip("node"))
-    #         edge_tasks.append((args.module, src_function, dst_function))
-
-    # # Step 5: Run edge-based symbolic executions in parallel
-    # with Pool(processes=min(cpu_count(), len(edge_tasks))) as pool:
-    #     edge_results = pool.map(edge_exec_task, edge_tasks)
+    # Step 5: Run edge-based symbolic executions in parallel
+    with Pool(processes=min(cpu_count(), len(edge_tasks))) as pool:
+        edge_results = pool.map(edge_exec_task, edge_tasks)
 
     # # Step 6: Annotate the CFG with constraints
-    # edge_constraints_map = {(src, dst): cons for src, dst, cons in edge_results}
-    # for fidx, _ in found_constraints.items():
-    #     sub_cfg = build_target_subgraph(cfg, f"node{fidx}", exported_nodes)
-    #     edges = sub_cfg.get_edges()
-    #     for edge in edges:
-    #         src_function = int(edge.get_source().strip('"').strip("node"))
-    #         dst_function = int(edge.get_destination().strip('"').strip("node"))
-    #         edge.set_comment(edge_constraints_map.get((src_function, dst_function), []))
-    #     for edge in edges:
-    #         print(f"In order to go from function {edge.get_source().strip('node')} to function {edge.get_destination().strip('node')} the constraints are:", flush=True)
-    #         for idx, c in enumerate(edge.get_comment()):
-    #             print(f"_______________constraint set {idx+1}_______________", flush=True)
-    #             print(c, flush=True)
-    #     print(sub_cfg)
+    edge_constraints_map = {(src, dst): cons for src, dst, cons in edge_results}
+    for sub_callgraph in sub_callgraph_list:
+        edges = sub_callgraph.get_edges()
+        for edge in edges:
+            src_function = int(edge.get_source().strip('"').strip("node"))
+            dst_function = int(edge.get_destination().strip('"').strip("node"))
+            edge.set_comment(edge_constraints_map.get((src_function, dst_function), []))
+        for edge in edges:
+            print(f"In order to go from function {edge.get_source().strip('node')} to function {edge.get_destination().strip('node')} the constraints are:", flush=True)
+            for idx, c in enumerate(edge.get_comment()):
+                print(f"_______________constraint set {idx+1}_______________", flush=True)
+                print(c, flush=True)
+        print(sub_callgraph)
 
 if __name__ == "__main__":
     main()
