@@ -4,10 +4,16 @@ from itertools import product
 # generate all the valid combinations for a sequence of rules
 def generate_ordered_valid_combinations(data_map, check_function, key_order):
     keys = list(data_map.keys())
+    # NOTE: create combinations only if there is at least one match per rule
+    unique_keys = list(dict.fromkeys(keys))
+    if set(unique_keys) != set(key_order):
+        return None
+    
     value_lists = [data_map[key] for key in keys]
     for values in product(*value_lists):
         combo = dict(zip(keys, values))
         ordered = reorder_combination(combo, key_order)
+
         if check_function(ordered):
             yield ordered
 # valid sequence check

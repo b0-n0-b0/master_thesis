@@ -1,0 +1,3 @@
+rule1 | i32.add: arg1, arg2; arg1 > 0, arg2 > 0 # first positive sum
+rule2 | i32.mul: arg1, arg2; arg1 > 0, arg2 > 0 # second positive sum
+! rule1 > rule2

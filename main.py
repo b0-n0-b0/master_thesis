@@ -35,7 +35,7 @@ def main():
     rule_matches = get_rule_matches(rule_set, args.module)
 
     if len(rule_matches) == 0:
-        print("No match for the provided rule was found", flush=True)
+        print("No match for the provided rule set was found", flush=True)
         return
     
     key_order = rule_set.application_order
@@ -44,16 +44,17 @@ def main():
 
     # Step 1: Prepare tasks for symbolic execution of rule matches
     symbolic_tasks = []
-    rule_matches[0] = rule_matches[0][:100]
-    # print(rule_matches, flush=True)
-    # return
     for combo in generate_ordered_valid_combinations(rule_matches, is_valid_rule_match_sequence, key_order):
         valid_match_sequence = list(combo.values()) # contains a sequence of matches that respects the order enforced by the rule file
-        for rule_match in valid_match_sequence:
-            symbolic_tasks.append((args.module, rule_match.fidx, valid_match_sequence))
-
+        symbolic_tasks.append((args.module, valid_match_sequence[0].fidx, valid_match_sequence))
+    
+    # NOTE: it was impossible to build a match sequence that satisfies the expected rule sequence 
+    if len(symbolic_tasks) == 0:
+        print("No match for the provided rule set was found", flush=True)
+        return
+    
     # Step 2: Run symbolic executions in parallel
-    with Pool(processes=min(cpu_count()//3, len(symbolic_tasks))) as pool:
+    with Pool(processes=min(cpu_count()//2, len(symbolic_tasks))) as pool:
         symbolic_results = pool.map(symbolic_exec_task, symbolic_tasks)
 
     # Step 3: Collect results
@@ -78,25 +79,26 @@ def main():
             dst_function = int(edge.get_destination().strip('"').strip("node"))
             edge_tasks.append((args.module, src_function, dst_function))
         sub_callgraph_list.append(sub_callgraph)
-
-    # Step 5: Run edge-based symbolic executions in parallel
-    with Pool(processes=min(cpu_count(), len(edge_tasks))) as pool:
-        edge_results = pool.map(edge_exec_task, edge_tasks)
-
-    # # Step 6: Annotate the CFG with constraints
-    edge_constraints_map = {(src, dst): cons for src, dst, cons in edge_results}
-    for sub_callgraph in sub_callgraph_list:
-        edges = sub_callgraph.get_edges()
-        for edge in edges:
-            src_function = int(edge.get_source().strip('"').strip("node"))
-            dst_function = int(edge.get_destination().strip('"').strip("node"))
-            edge.set_comment(edge_constraints_map.get((src_function, dst_function), []))
-        for edge in edges:
-            print(f"In order to go from function {edge.get_source().strip('node')} to function {edge.get_destination().strip('node')} the constraints are:", flush=True)
-            for idx, c in enumerate(edge.get_comment()):
-                print(f"_______________constraint set {idx+1}_______________", flush=True)
-                print(c, flush=True)
         print(sub_callgraph)
+    
+    # # Step 5: Run edge-based symbolic executions in parallel
+    # with Pool(processes=min(cpu_count(), len(edge_tasks))) as pool:
+    #     edge_results = pool.map(edge_exec_task, edge_tasks)
+
+    # # # Step 6: Annotate the CFG with constraints
+    # edge_constraints_map = {(src, dst): cons for src, dst, cons in edge_results}
+    # for sub_callgraph in sub_callgraph_list:
+    #     edges = sub_callgraph.get_edges()
+    #     for edge in edges:
+    #         src_function = int(edge.get_source().strip('"').strip("node"))
+    #         dst_function = int(edge.get_destination().strip('"').strip("node"))
+    #         edge.set_comment(edge_constraints_map.get((src_function, dst_function), []))
+    #     for edge in edges:
+    #         print(f"In order to go from function {edge.get_source().strip('node')} to function {edge.get_destination().strip('node')} the constraints are:", flush=True)
+    #         for idx, c in enumerate(edge.get_comment()):
+    #             print(f"_______________constraint set {idx+1}_______________", flush=True)
+    #             print(c, flush=True)
+    #     print(sub_callgraph)
 
 if __name__ == "__main__":
     main()

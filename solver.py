@@ -18,6 +18,8 @@ class InstructionHookPlugin(Plugin):
         self.match_constraints = []
 
     # NOTE: apply at match
+    # TODO: the current_rule_idx value MUST be tied to the state, not to the plugin!!!
+    # otherwise we can create bugs in the way the analysis is performed
     def generic_solver(self, state, current_instruction):
         if len(self.rule_instances) > 0:
             current_rule = self.rule_instances[self.current_rule_idx]
@@ -31,17 +33,18 @@ class InstructionHookPlugin(Plugin):
                 for constraint in current_rule.rule.constraints:
                     state.constrain(eval(constraint))
                 # NOTE: all constraints where applied, we are ready to try and concretize the state
+                # TODO: the usage of current_rule_idx is broken
                 if self.current_rule_idx == len(self.rule_instances)-1:
                     if (state.is_feasible()):
-                        # NOTE: can we actually have more then one list of constraints?
+                        # TODO: can we actually have more then one list of constraints?
                         self.match_constraints.append(state._constraints)
-                        # for sym in state.input_symbols:
-                        #     solved = state.solve_one(sym)
-                        #     print(f"solution for {sym.name}: {solved}")
+                        for sym in state.input_symbols:
+                            solved = state.solve_n(sym,1)
+                            print(f"solution for {sym.name}: {solved}")
                     else:
                         print("not feasible", flush=True)
                     # NOTE: abandon the state once done
-                    state.abandon()
+                    # state.abandon()
                     # print(dir(state))
                 # NOTE: we found the rule match, we can proceed to the next one
                 self.current_rule_idx += 1
@@ -67,7 +70,7 @@ class CallHookPlugin(Plugin):
 
 
 
-# In order to invoke a wasm fuction with symbolic parameters, 
+# In order to invoke a wasm function with symbolic parameters, 
 # we use a function that returns an array of symbolic values 
 # with types compatibles with the function signature
 def param_generator(state, params):
