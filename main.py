@@ -10,8 +10,10 @@ from solver import run_symbolic_execution, InstructionHookPlugin, CallHookPlugin
 def symbolic_exec_task(args):
     """Wrapper for parallel symbolic execution with InstructionHookPlugin"""
     module, fidx, valid_match_sequence = args
+    print(f"________________________\nSymbolic execution of function {fidx} with match sequence:")
     for match in valid_match_sequence:
-        print(f"________________________\nSymbolic execution of function {fidx} with target:\n{match}\n\n________________________", flush=True)
+        print(f"\n{match}\n", flush=True)
+    print("________________________", flush=True)
     try:
         constraints = run_symbolic_execution(module, fidx, InstructionHookPlugin(valid_match_sequence))
         return (fidx, constraints)
@@ -37,7 +39,7 @@ def main():
     if len(rule_matches) == 0:
         print("No match for the provided rule set was found", flush=True)
         return
-    
+    rule_matches[0] = rule_matches[0][58:59]
     key_order = rule_set.application_order
     cfg = get_cfg(args.module)
     found_constraints = {}
@@ -52,11 +54,12 @@ def main():
     if len(symbolic_tasks) == 0:
         print("No match for the provided rule set was found", flush=True)
         return
-    
+
     # Step 2: Run symbolic executions in parallel
     with Pool(processes=min(cpu_count()//2, len(symbolic_tasks))) as pool:
         symbolic_results = pool.map(symbolic_exec_task, symbolic_tasks)
-
+    # with Pool(processes=min(1, len(symbolic_tasks))) as pool:
+    #     symbolic_results = pool.map(symbolic_exec_task, symbolic_tasks)
     # Step 3: Collect results
     for fidx, constraints in symbolic_results:
         if constraints:
