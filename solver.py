@@ -18,52 +18,47 @@ class InstructionHookPlugin(Plugin):
         self.match_constraints = []
 
     # NOTE: apply at match
-    # TODO: triple check that the current_rule_idx mechanism is working as intended
     def generic_solver(self, state, current_instruction):
         with self.locked_context("counter", dict) as ctx:
             current_rule_idx = ctx.setdefault("current_rule_idx", 0)
 
-            # NOTE: abandon ALL the states once done
-            if ctx['current_rule_idx'] > len(self.rule_instances)-1:
-                print(f"current_rule_idx -> {ctx['current_rule_idx']} in state {state}")
-                # raise TerminateState("Abandoning")
-                state.abandon()
-                # print("I'm abandoning the state", flush=True)
-
-            if len(self.rule_instances) > 0:
-                current_rule = self.rule_instances[ctx['current_rule_idx']]
-                if current_instruction.funcaddr == current_rule.fidx and current_instruction.offset == current_rule.offset:
-                    symbolic_parameters = []
-                    # NOTE: declare parameters starting from the rule
-                    # we reverse the array because WASM is a stack machine (last pushed value is the last param of the instruction)
-                    # match target instruction
-                    for idx, param in enumerate(current_rule.rule.parameters[::-1]):
-                        locals()[param] = state.stack.peek_nth(idx+1)
-                    for constraint in current_rule.rule.constraints:
-                        state.constrain(eval(constraint))
-                    # NOTE: all constraints where applied, we are ready to try and concretize the state
-                    if ctx['current_rule_idx'] == len(self.rule_instances)-1:
-                        if (state.is_feasible()):
-                            print("found constraints for:", flush=True)
-                            print(current_rule, flush=True)
-
-                            # TODO: can we actually have more then one list of constraints?
-                            self.match_constraints.append(state._constraints)
-                            print(state._constraints, flush=True)
-                            # for sym in state.input_symbols:
-                            #     solved = state.solve_n(sym,1)
-                            #     print(f"solution for {sym.name}: {solved}")
-                        else:
-                            print("not feasible", flush=True)
-                        # state.abandon()
-                        # print(dir(state))
-                    # NOTE: we found the rule match, we can proceed to the next one
+        # NOTE: abandon ALL the states once done
+        if current_rule_idx > len(self.rule_instances)-1:
+            # print(f"current_rule_idx -> {current_rule_idx} in state {state}")
+            state.abandon()
+        
+        if len(self.rule_instances) > 0:
+            current_rule = self.rule_instances[current_rule_idx]
+            if current_instruction.funcaddr == current_rule.fidx and current_instruction.offset == current_rule.offset:
+                symbolic_parameters = []
+                # NOTE: declare parameters starting from the rule
+                # we reverse the array because WASM is a stack machine (last pushed value is the last param of the instruction)
+                # match target instruction
+                for idx, param in enumerate(current_rule.rule.parameters[::-1]):
+                    locals()[param] = state.stack.peek_nth(idx+1)
+                for constraint in current_rule.rule.constraints:
+                    state.constrain(eval(constraint))
+                # NOTE: all constraints where applied, we are ready to try and concretize the state
+                if current_rule_idx == len(self.rule_instances)-1:
+                    if (state.is_feasible()):
+                        # print("found constraints for:", flush=True)
+                        # print(current_rule, flush=True)
+                        self.match_constraints.append(state._constraints)
+                        # print(state._constraints, flush=True)
+                        # for sym in state.input_symbols:
+                        #     solved = state.solve_n(sym,1)
+                        #     print(f"solution for {sym.name}: {solved}")
+                    # else:
+                        # print("not feasible", flush=True)
+                
+                # NOTE: we found the rule match, we can proceed to the next one
+                with self.locked_context("counter", dict) as ctx:
                     ctx['current_rule_idx'] += 1
 
     def will_execute_instruction_callback(self, state, *args):
         # self.example_solver_for_add_if(state, *args)
         instruction = args[0]
-        print(f"In function: {instruction.funcaddr} executing {instruction.mnemonic} @ offset {instruction.offset}", flush=True)
+        # print(f"In function: {instruction.funcaddr} executing {instruction.mnemonic} @ offset {instruction.offset}", flush=True)
         self.generic_solver(state, instruction)
 
 class CallHookPlugin(Plugin):

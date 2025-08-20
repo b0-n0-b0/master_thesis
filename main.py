@@ -10,10 +10,10 @@ from solver import run_symbolic_execution, InstructionHookPlugin, CallHookPlugin
 def symbolic_exec_task(args):
     """Wrapper for parallel symbolic execution with InstructionHookPlugin"""
     module, fidx, valid_match_sequence = args
-    print(f"________________________\nSymbolic execution of function {fidx} with match sequence:")
-    for match in valid_match_sequence:
-        print(f"\n{match}\n", flush=True)
-    print("________________________", flush=True)
+    # print(f"________________________\nSymbolic execution of function {fidx} with match sequence:")
+    # for match in valid_match_sequence:
+    #     print(f"\n{match}\n", flush=True)
+    # print("________________________", flush=True)
     try:
         constraints = run_symbolic_execution(module, fidx, InstructionHookPlugin(valid_match_sequence))
         return (fidx, constraints)
@@ -39,7 +39,8 @@ def main():
     if len(rule_matches) == 0:
         print("No match for the provided rule set was found", flush=True)
         return
-    rule_matches[0] = rule_matches[0][58:59]
+    #NOTE: test for /inputs/1318-axosnake.wasm
+    # rule_matches[0] = rule_matches[0][58:59]
     key_order = rule_set.application_order
     cfg = get_cfg(args.module)
     found_constraints = {}
@@ -60,6 +61,8 @@ def main():
         symbolic_results = pool.map(symbolic_exec_task, symbolic_tasks)
     # with Pool(processes=min(1, len(symbolic_tasks))) as pool:
     #     symbolic_results = pool.map(symbolic_exec_task, symbolic_tasks)
+    symbolic_results = [sym_res for sym_res in symbolic_results if sym_res is not None]
+
     # Step 3: Collect results
     for fidx, constraints in symbolic_results:
         if constraints:
@@ -82,26 +85,25 @@ def main():
             dst_function = int(edge.get_destination().strip('"').strip("node"))
             edge_tasks.append((args.module, src_function, dst_function))
         sub_callgraph_list.append(sub_callgraph)
-        print(sub_callgraph)
     
-    # # Step 5: Run edge-based symbolic executions in parallel
-    # with Pool(processes=min(cpu_count(), len(edge_tasks))) as pool:
-    #     edge_results = pool.map(edge_exec_task, edge_tasks)
+    # Step 5: Run edge-based symbolic executions in parallel
+    with Pool(processes=min(cpu_count(), len(edge_tasks))) as pool:
+        edge_results = pool.map(edge_exec_task, edge_tasks)
 
-    # # # Step 6: Annotate the CFG with constraints
-    # edge_constraints_map = {(src, dst): cons for src, dst, cons in edge_results}
-    # for sub_callgraph in sub_callgraph_list:
-    #     edges = sub_callgraph.get_edges()
-    #     for edge in edges:
-    #         src_function = int(edge.get_source().strip('"').strip("node"))
-    #         dst_function = int(edge.get_destination().strip('"').strip("node"))
-    #         edge.set_comment(edge_constraints_map.get((src_function, dst_function), []))
-    #     for edge in edges:
-    #         print(f"In order to go from function {edge.get_source().strip('node')} to function {edge.get_destination().strip('node')} the constraints are:", flush=True)
-    #         for idx, c in enumerate(edge.get_comment()):
-    #             print(f"_______________constraint set {idx+1}_______________", flush=True)
-    #             print(c, flush=True)
-    #     print(sub_callgraph)
+    # # Step 6: Annotate the CFG with constraints
+    edge_constraints_map = {(src, dst): cons for src, dst, cons in edge_results}
+    for sub_callgraph in sub_callgraph_list:
+        edges = sub_callgraph.get_edges()
+        for edge in edges:
+            src_function = int(edge.get_source().strip('"').strip("node"))
+            dst_function = int(edge.get_destination().strip('"').strip("node"))
+            edge.set_comment(edge_constraints_map.get((src_function, dst_function), []))
+        for edge in edges:
+            print(f"In order to go from function {edge.get_source().strip('node')} to function {edge.get_destination().strip('node')} the constraints are:", flush=True)
+            for idx, c in enumerate(edge.get_comment()):
+                print(f"_______________constraint set {idx+1}_______________", flush=True)
+                print(c, flush=True)
+        print(sub_callgraph)
 
 if __name__ == "__main__":
     main()
