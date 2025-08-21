@@ -1,1 +1,0 @@
-main.py int32_overflow.rule ../tests/reward_points/reward_points_multiple_paths.wasm
