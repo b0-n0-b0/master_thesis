@@ -71,9 +71,9 @@ def main():
     # Step 3: Collect results
     for fidx, constraints in symbolic_results:
         if constraints:
-            # print(f"Constraints for function {fidx}:", flush=True)
-            # for c in constraints:
-            #     print(c, flush=True)
+            print(f"Constraints for function {fidx}:", flush=True)
+            for c in constraints:
+                print(c, flush=True)
             found_constraints.setdefault(fidx, []).append(constraints)
 
     # TODO: We need to understand if the performance is better with parallelization of edge_tasks or information reuse
@@ -93,8 +93,7 @@ def main():
             dst_function = int(edge.get_destination().strip('"').strip("node"))
             edge_tasks.append((args.module, src_function, dst_function, found_edge_constraints))
         sub_callgraph_list.append(sub_callgraph)
-        # print(sub_callgraph)
-    # return
+        print(sub_callgraph)
     # Step 5: Run edge-based symbolic executions in parallel
     # with Pool(processes=min(cpu_count(), len(edge_tasks))) as pool:
     #     edge_results = pool.map(edge_exec_task, edge_tasks)

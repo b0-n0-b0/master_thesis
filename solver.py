@@ -70,7 +70,7 @@ class CallHookPlugin(Plugin):
         self.match_constraints = []
     def will_call_function_callback(self, state, *args):
         called_function, current_function = args
-        # print(f"{current_function} is calling {called_function}")
+        print(f"{current_function} is calling {called_function}")
         if (current_function == self.target_src and called_function == self.target_call and state.is_feasible()):
             # print(f"feasible: {current_function} -> {called_function}")
             self.match_constraints.append(state._constraints)
@@ -94,6 +94,8 @@ def run_symbolic_execution(module, function_index, plugin):
         param_specs.append(Param(f"param_{idx}", type.get_size()))
     # NOTE: Register our instruction execution hook
     # NOTE: The Rule is provided by the RuleSet, fidx and offset are provided by the wassail output 
+    # if isinstance(plugin, InstructionHookPlugin):
+        # print(f"registered the plugin")
     m.register_plugin(plugin)
     # NOTE: Call the function with symbolic arguments
     m.invoke_by_index(function_index, param_generator, param_specs)
