@@ -16,6 +16,7 @@ def symbolic_exec_task(args):
     # print("________________________", flush=True)
     try:
         constraints = run_symbolic_execution(module, fidx, InstructionHookPlugin(valid_match_sequence))
+        # print(constraints)
         return (fidx, constraints)
     except Exception as e:
         print(e, flush=True)
