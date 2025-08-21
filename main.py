@@ -1,6 +1,6 @@
 import argparse
 import os
-from multiprocessing import Pool, cpu_count
+from multiprocessing import Pool, cpu_count, Manager
 from utils.rule_parser_lark import parse_rule_file
 from utils.collections_utils import generate_ordered_valid_combinations, is_valid_rule_match_sequence
 from utils.wassail_utils import get_rule_matches, get_exported_nodes, get_cfg
@@ -23,8 +23,13 @@ def symbolic_exec_task(args):
 
 def edge_exec_task(args):
     """Wrapper for parallel symbolic execution for control flow edges"""
-    module, src_function, dst_function = args
-    constraints = run_symbolic_execution(module, src_function, CallHookPlugin(dst_function))
+    module, src_function, dst_function, found_edge_constraints = args
+    if (src_function,dst_function) in found_edge_constraints:
+        # print(f"found in array {src_function} -> {dst_function}", flush=True)
+        return (src_function, dst_function, found_edge_constraints[(src_function,dst_function)])
+    # print(f"calculating {src_function} -> {dst_function}", flush=True)
+    constraints = run_symbolic_execution(module, src_function, CallHookPlugin(dst_function, src_function))
+    found_edge_constraints[(src_function,dst_function)] = constraints
     return (src_function, dst_function, constraints)
 
 def main():
@@ -57,18 +62,18 @@ def main():
         return
 
     # Step 2: Run symbolic executions in parallel
-    with Pool(processes=min(cpu_count()//2, len(symbolic_tasks))) as pool:
-        symbolic_results = pool.map(symbolic_exec_task, symbolic_tasks)
-    # with Pool(processes=min(1, len(symbolic_tasks))) as pool:
+    # with Pool(processes=min(cpu_count()//2, len(symbolic_tasks))) as pool:
     #     symbolic_results = pool.map(symbolic_exec_task, symbolic_tasks)
+    with Pool(processes=min(1, len(symbolic_tasks))) as pool:
+        symbolic_results = pool.map(symbolic_exec_task, symbolic_tasks)
     symbolic_results = [sym_res for sym_res in symbolic_results if sym_res is not None]
 
     # Step 3: Collect results
     for fidx, constraints in symbolic_results:
         if constraints:
-            print(f"Constraints for function {fidx}:", flush=True)
-            for c in constraints:
-                print(c, flush=True)
+            # print(f"Constraints for function {fidx}:", flush=True)
+            # for c in constraints:
+            #     print(c, flush=True)
             found_constraints.setdefault(fidx, []).append(constraints)
 
     # TODO: We need to understand if the performance is better with parallelization of edge_tasks or information reuse
@@ -77,17 +82,23 @@ def main():
     exported_nodes = get_exported_nodes(args.module)
     edge_tasks = []
     sub_callgraph_list = []
+    # NOTE: create a shared dict containing tuples ((src,dst), constraints)
+    manager = Manager()
+    found_edge_constraints = manager.dict()
     for fidx, _ in found_constraints.items():
         sub_callgraph = build_target_subgraph(cfg, f"node{fidx}", exported_nodes)
         edges = sub_callgraph.get_edges()
         for edge in edges:
             src_function = int(edge.get_source().strip('"').strip("node"))
             dst_function = int(edge.get_destination().strip('"').strip("node"))
-            edge_tasks.append((args.module, src_function, dst_function))
+            edge_tasks.append((args.module, src_function, dst_function, found_edge_constraints))
         sub_callgraph_list.append(sub_callgraph)
-    
+        # print(sub_callgraph)
+    # return
     # Step 5: Run edge-based symbolic executions in parallel
-    with Pool(processes=min(cpu_count(), len(edge_tasks))) as pool:
+    # with Pool(processes=min(cpu_count(), len(edge_tasks))) as pool:
+    #     edge_results = pool.map(edge_exec_task, edge_tasks)
+    with Pool(processes=min(1, len(edge_tasks))) as pool:
         edge_results = pool.map(edge_exec_task, edge_tasks)
 
     # # Step 6: Annotate the CFG with constraints
@@ -98,11 +109,11 @@ def main():
             src_function = int(edge.get_source().strip('"').strip("node"))
             dst_function = int(edge.get_destination().strip('"').strip("node"))
             edge.set_comment(edge_constraints_map.get((src_function, dst_function), []))
-        for edge in edges:
-            print(f"In order to go from function {edge.get_source().strip('node')} to function {edge.get_destination().strip('node')} the constraints are:", flush=True)
-            for idx, c in enumerate(edge.get_comment()):
-                print(f"_______________constraint set {idx+1}_______________", flush=True)
-                print(c, flush=True)
+        # for edge in edges:
+        #     print(f"In order to go from function {edge.get_source().strip('node')} to function {edge.get_destination().strip('node')} the constraints are:", flush=True)
+        #     for idx, c in enumerate(edge.get_comment()):
+        #         print(f"_______________constraint set {idx+1}_______________", flush=True)
+        #         print(c, flush=True)
         print(sub_callgraph)
 
 if __name__ == "__main__":

@@ -62,19 +62,19 @@ class InstructionHookPlugin(Plugin):
         self.generic_solver(state, instruction)
 
 class CallHookPlugin(Plugin):
-    def __init__(self, target_function_call):
+    def __init__(self, target_function_call, target_src):
         super().__init__()
         self.target_call = target_function_call
+        self.target_src = target_src
         # solve for the input symbols once these are over
         self.match_constraints = []
     def will_call_function_callback(self, state, *args):
-        called_function = args[0]
-        if (called_function == self.target_call and state.is_feasible()):
-            # NOTE: can we actually have more then one list of constraints?
+        called_function, current_function = args
+        # print(f"{current_function} is calling {called_function}")
+        if (current_function == self.target_src and called_function == self.target_call and state.is_feasible()):
+            # print(f"feasible: {current_function} -> {called_function}")
             self.match_constraints.append(state._constraints)
-        # print(f"will call function {called_function}")
-
-
+        # print("call done")
 
 # In order to invoke a wasm function with symbolic parameters, 
 # we use a function that returns an array of symbolic values 

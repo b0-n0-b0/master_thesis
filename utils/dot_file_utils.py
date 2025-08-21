@@ -21,41 +21,50 @@ def build_adjacency_and_reverse(graph):
 def find_all_paths_to_target(adj, roots, target):
     paths = []
     visited = set()
-    success_cache = set()
+    success_cache = defaultdict(set)
     fail_cache = set()
-
     def dfs(node, path):
         if node == target:
             paths.append(path[:])
-            return True
+            return True, [node]
 
         # Memoization
         if node in fail_cache:
-            return False
-        if node in success_cache:
-            paths.append(path[:] + [target])
-            return True
+            # print(f"fail hit at node {node}")
+            return False, None
+        
+        if node in success_cache and success_cache[node]:
+            # print(f"cache hit from {node}")
+            for cached_path in success_cache[node]:  # cached_path is a tuple
+                paths.append(path[:] + list(cached_path)[1:])
+            return True, list(cached_path) 
 
         found_path = False
+        to_cache_path = None
         for child in adj.get(node, []):
             if child in path:
                 continue  # Avoid cycles
             path.append(child)
-            if dfs(child, path):
-                found_path = True
+            found_path, to_cache_path = dfs(child, path)
             path.pop()
 
-        if found_path:
-            success_cache.add(node)
-        else:
+            if found_path:
+                # must be an array
+                to_cache_path.insert(0,node)
+#                 print(f"__________")
+                # print(f"to_cache_path -> {to_cache_path}")
+                success_cache[node].add(tuple(to_cache_path))
+                # print(f"from {node} caching {success_cache[node]}")
+                # print(f"value inserted in success_cache[{node}]")
+                # print(f"__________")
+        if not found_path:
             fail_cache.add(node)
-        return found_path
+        return found_path, to_cache_path
 
     for root in roots:
         if root in visited:
             continue
         dfs(root, [root])
-
     return paths
 
 def build_subgraph_from_paths(paths, exported_nodes):
