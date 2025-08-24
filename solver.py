@@ -70,7 +70,7 @@ class CallHookPlugin(Plugin):
         self.match_constraints = []
     def will_call_function_callback(self, state, *args):
         called_function, current_function = args
-        print(f"{current_function} is calling {called_function}")
+        # print(f"{current_function} is calling {called_function}")
         if (current_function == self.target_src and called_function == self.target_call and state.is_feasible()):
             # print(f"feasible: {current_function} -> {called_function}")
             self.match_constraints.append(state._constraints)
