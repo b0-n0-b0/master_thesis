@@ -65,17 +65,17 @@ def main():
     # Step 2: Run symbolic executions in parallel
     # with Pool(processes=min(cpu_count()//2, len(symbolic_tasks))) as pool:
     #     symbolic_results = pool.map(symbolic_exec_task, symbolic_tasks)
-    with Pool(processes=min(1, len(symbolic_tasks))) as pool:
-        symbolic_results = pool.map(symbolic_exec_task, symbolic_tasks)
-    symbolic_results = [sym_res for sym_res in symbolic_results if sym_res is not None]
+    # with Pool(processes=min(1, len(symbolic_tasks))) as pool:
+    #     symbolic_results = pool.map(symbolic_exec_task, symbolic_tasks)
+    # symbolic_results = [sym_res for sym_res in symbolic_results if sym_res is not None]
 
     # Step 3: Collect results
-    for fidx, constraints in symbolic_results:
-        if constraints:
-            print(f"Constraints for function {fidx}:", flush=True)
-            for c in constraints:
-                print(c, flush=True)
-            found_constraints.setdefault(fidx, []).append(constraints)
+    # for fidx, constraints in symbolic_results:
+    #     if constraints:
+    #         print(f"Constraints for function {fidx}:", flush=True)
+    #         for c in constraints:
+    #             print(c, flush=True)
+    #         found_constraints.setdefault(fidx, []).append(constraints)
 
     # TODO: We need to understand if the performance is better with parallelization of edge_tasks or information reuse
     # as per now, if two tasks encounter the same edge with the same target_function, the symbolic execution to find the constraints is executed twice 
@@ -86,6 +86,8 @@ def main():
     # NOTE: create a shared dict containing tuples ((src,dst), constraints)
     manager = Manager()
     found_edge_constraints = manager.dict()
+    #NOTE: test for /inputs/1318-axosnake.wasm
+    found_constraints.setdefault('117',[])
     for fidx, _ in found_constraints.items():
         sub_callgraph = build_target_subgraph(cfg, f"node{fidx}", exported_nodes)
         edges = sub_callgraph.get_edges()
@@ -96,10 +98,10 @@ def main():
         sub_callgraph_list.append(sub_callgraph)
         print(sub_callgraph)
     # Step 5: Run edge-based symbolic executions in parallel
-    # with Pool(processes=min(cpu_count(), len(edge_tasks))) as pool:
-    #     edge_results = pool.map(edge_exec_task, edge_tasks)
-    with Pool(processes=min(1, len(edge_tasks))) as pool:
+    with Pool(processes=min(cpu_count(), len(edge_tasks))) as pool:
         edge_results = pool.map(edge_exec_task, edge_tasks)
+    # with Pool(processes=min(1, len(edge_tasks))) as pool:
+    #     edge_results = pool.map(edge_exec_task, edge_tasks)
 
     # # Step 6: Annotate the CFG with constraints
     edge_constraints_map = {(src, dst): cons for src, dst, cons in edge_results}
