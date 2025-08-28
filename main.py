@@ -45,7 +45,7 @@ def main():
     parser.add_argument("module", help="Path of the file containing the WASM module to analyze")
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
     parser.add_argument(
-        "-j","--jobs"
+        "-j","--jobs",
         type=int,
         default=4,
         help="Number of concurrent processes to use for parallel execution (default: 4)"

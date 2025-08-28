@@ -75,15 +75,15 @@ class RuleTransformer(Transformer):
     def start(self, _):
         return RuleSet(self.rules, self.sequence)
 
+rule_parser = Lark(rule_grammar, parser="lalr", lexer="contextual", transformer=RuleTransformer())
+# Example of use
+def parse_rule_file(path):
+    # Parser setup
+    with open(path, 'r') as file:
+        content = file.read()
+        ruleset = rule_parser.parse(content)
+        return ruleset
 if __name__ == "__main__":
-    # Example of use
-    def parse_rule_file(path):
-        # Parser setup
-        rule_parser = Lark(rule_grammar, parser="lalr", lexer="contextual", transformer=RuleTransformer())
-        with open(path, 'r') as file:
-            content = file.read()
-            ruleset = rule_parser.parse(content)
-            return ruleset
     
     ruleset = parse_rule_file("../test.rule")
     print(ruleset)
