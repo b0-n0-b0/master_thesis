@@ -1,6 +1,7 @@
 import argparse
 import os
 import logging
+import sys
 from multiprocessing import Pool, cpu_count, Manager
 from utils.rule_parser_lark import parse_rule_file
 from utils.collections_utils import generate_ordered_valid_combinations, is_valid_rule_match_sequence
@@ -9,10 +10,13 @@ from utils.dot_file_utils import build_target_subgraph
 from solver import run_symbolic_execution, InstructionHookPlugin, CallHookPlugin
 
 def setup_logging(debug: bool):
-    if debug:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.INFO)
+    handlers = [logging.StreamHandler(sys.stdout)]
+    logging.basicConfig(
+        level=logging.DEBUG if debug else logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        handlers=handlers,
+        force=True,  # reconfigure if logging was already set
+    )
 
 def symbolic_exec_task(args):
     """Wrapper for parallel symbolic execution with InstructionHookPlugin"""
