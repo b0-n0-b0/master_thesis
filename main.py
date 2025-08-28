@@ -10,22 +10,17 @@ from utils.dot_file_utils import build_target_subgraph
 from solver import run_symbolic_execution, InstructionHookPlugin, CallHookPlugin
 
 def setup_logging(debug: bool, logfile: str = "app.log"):
-    # Console handler (goes to Docker logs)
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(logging.DEBUG if debug else logging.INFO)
-
     # File handler
     file_handler = logging.FileHandler(logfile)
     file_handler.setLevel(logging.DEBUG if debug else logging.INFO)
 
     # Common formatter
     formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
-    console_handler.setFormatter(formatter)
     file_handler.setFormatter(formatter)
 
     logging.basicConfig(
         level=logging.DEBUG if debug else logging.INFO,
-        handlers=[console_handler, file_handler],
+        handlers=[file_handler],
         force=True,
     )
 
