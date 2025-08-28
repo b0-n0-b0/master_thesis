@@ -1,22 +1,29 @@
 import argparse
 import os
+import logging
 from multiprocessing import Pool, cpu_count, Manager
 from utils.rule_parser_lark import parse_rule_file
 from utils.collections_utils import generate_ordered_valid_combinations, is_valid_rule_match_sequence
-from utils.wassail_utils import get_rule_matches, get_exported_nodes, get_cfg
+from utils.wassail_utils import get_rule_matches, get_exported_nodes, get_callgraph
 from utils.dot_file_utils import build_target_subgraph
 from solver import run_symbolic_execution, InstructionHookPlugin, CallHookPlugin
+
+def setup_logging(debug: bool):
+    if debug:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(logging.INFO)  # Disable all logs
 
 def symbolic_exec_task(args):
     """Wrapper for parallel symbolic execution with InstructionHookPlugin"""
     module, fidx, valid_match_sequence = args
-    # print(f"________________________\nSymbolic execution of function {fidx} with match sequence:")
-    # for match in valid_match_sequence:
-    #     print(f"\n{match}\n", flush=True)
-    # print("________________________", flush=True)
+    logging.debug(f"________________________\nSymbolic execution of function {fidx} with match sequence:")
+    for match in valid_match_sequence:
+        logging.debug(f"\n{match}\n", flush=True)
+    logging.debug("________________________", flush=True)
+
     try:
         constraints = run_symbolic_execution(module, fidx, InstructionHookPlugin(valid_match_sequence))
-        # print(constraints)
         return (fidx, constraints)
     except Exception as e:
         print(e, flush=True)
@@ -26,9 +33,8 @@ def edge_exec_task(args):
     """Wrapper for parallel symbolic execution for control flow edges"""
     module, src_function, dst_function, found_edge_constraints = args
     if (src_function,dst_function) in found_edge_constraints:
-        # print(f"found in array {src_function} -> {dst_function}", flush=True)
         return (src_function, dst_function, found_edge_constraints[(src_function,dst_function)])
-    # print(f"calculating {src_function} -> {dst_function}", flush=True)
+    logging.debug(f"calculating {src_function} -> {dst_function}", flush=True)
     constraints = run_symbolic_execution(module, src_function, CallHookPlugin(dst_function, src_function))
     found_edge_constraints[(src_function,dst_function)] = constraints
     return (src_function, dst_function, constraints)
@@ -37,18 +43,27 @@ def main():
     parser = argparse.ArgumentParser(description="...")
     parser.add_argument("rules", help="Path of the file containing the rules")
     parser.add_argument("module", help="Path of the file containing the WASM module to analyze")
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+    parser.add_argument(
+        "-j","--jobs"
+        type=int,
+        default=4,
+        help="Number of concurrent processes to use for parallel execution (default: 4)"
+    )
     args = parser.parse_args()
+
+    args.jobs = min(cpu_count(), args.jobs)
 
     rule_set = parse_rule_file(args.rules)
     rule_matches = get_rule_matches(rule_set, args.module)
 
     if len(rule_matches) == 0:
-        print("No match for the provided rule set was found", flush=True)
+        logging.info("No match for the provided rule set was found")
         return
     #NOTE: test for /inputs/1318-axosnake.wasm
     # rule_matches[0] = rule_matches[0][58:59]
     key_order = rule_set.application_order
-    cfg = get_cfg(args.module)
+    callgraph = get_callgraph(args.module)
     found_constraints = {}
 
     # Step 1: Prepare tasks for symbolic execution of rule matches
@@ -59,26 +74,22 @@ def main():
     
     # NOTE: it was impossible to build a match sequence that satisfies the expected rule sequence 
     if len(symbolic_tasks) == 0:
-        print("No match for the provided rule set was found", flush=True)
+        logging.info("No match for the provided rule set was found", flush=True)
         return
 
     # Step 2: Run symbolic executions in parallel
-    # with Pool(processes=min(cpu_count()//2, len(symbolic_tasks))) as pool:
-    #     symbolic_results = pool.map(symbolic_exec_task, symbolic_tasks)
-    # with Pool(processes=min(1, len(symbolic_tasks))) as pool:
-    #     symbolic_results = pool.map(symbolic_exec_task, symbolic_tasks)
-    # symbolic_results = [sym_res for sym_res in symbolic_results if sym_res is not None]
+    with Pool(processes=args.jobs) as pool:
+        symbolic_results = pool.map(symbolic_exec_task, symbolic_tasks)
+    symbolic_results = [sym_res for sym_res in symbolic_results if sym_res is not None]
 
     # Step 3: Collect results
-    # for fidx, constraints in symbolic_results:
-    #     if constraints:
-    #         print(f"Constraints for function {fidx}:", flush=True)
-    #         for c in constraints:
-    #             print(c, flush=True)
-    #         found_constraints.setdefault(fidx, []).append(constraints)
+    for fidx, constraints in symbolic_results:
+        if constraints:
+            logging.debug(f"Constraints for function {fidx}:", flush=True)
+            for c in constraints:
+                logging.debug(c, flush=True)
+            found_constraints.setdefault(fidx, []).append(constraints)
 
-    # TODO: We need to understand if the performance is better with parallelization of edge_tasks or information reuse
-    # as per now, if two tasks encounter the same edge with the same target_function, the symbolic execution to find the constraints is executed twice 
     # Step 4: Build subgraphs and prepare edge execution tasks
     exported_nodes = get_exported_nodes(args.module)
     edge_tasks = []
@@ -86,24 +97,23 @@ def main():
     # NOTE: create a shared dict containing tuples ((src,dst), constraints)
     manager = Manager()
     found_edge_constraints = manager.dict()
-    #NOTE: test for /inputs/1318-axosnake.wasm
-    found_constraints.setdefault('117',[])
+    # NOTE: create the tasks to edge tasks to be executed in parallel
     for fidx, _ in found_constraints.items():
-        sub_callgraph = build_target_subgraph(cfg, f"node{fidx}", exported_nodes)
+        sub_callgraph = build_target_subgraph(callgraph, f"node{fidx}", exported_nodes)
         edges = sub_callgraph.get_edges()
         for edge in edges:
             src_function = int(edge.get_source().strip('"').strip("node"))
             dst_function = int(edge.get_destination().strip('"').strip("node"))
             edge_tasks.append((args.module, src_function, dst_function, found_edge_constraints))
         sub_callgraph_list.append(sub_callgraph)
-        print(sub_callgraph)
+        logging.debug(f"sub-callgraph for function {fidx}:")
+        logging.debug(sub_callgraph)
+    
     # Step 5: Run edge-based symbolic executions in parallel
-    with Pool(processes=min(cpu_count(), len(edge_tasks))) as pool:
+    with Pool(processes=args.jobs) as pool:
         edge_results = pool.map(edge_exec_task, edge_tasks)
-    # with Pool(processes=min(1, len(edge_tasks))) as pool:
-    #     edge_results = pool.map(edge_exec_task, edge_tasks)
 
-    # # Step 6: Annotate the CFG with constraints
+    # Step 6: Annotate the callgraph with constraints
     edge_constraints_map = {(src, dst): cons for src, dst, cons in edge_results}
     for sub_callgraph in sub_callgraph_list:
         edges = sub_callgraph.get_edges()

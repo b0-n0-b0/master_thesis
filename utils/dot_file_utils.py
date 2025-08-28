@@ -2,13 +2,16 @@ import pydot
 from collections import defaultdict
 
 def load_dot_file(path):
+    """Load a DOT file from the given path and return the first graph if available, else None."""    
     graphs = pydot.graph_from_dot_file(path)
     return graphs[0] if graphs else None
 
 def normalize_node(name):
+    """Remove surrounding quotes from a node name."""
     return name.strip('"')
 
 def build_adjacency_and_reverse(graph):
+    """Build adjacency and reverse adjacency dictionaries from a pydot graph."""
     adj = defaultdict(list)
     rev_adj = defaultdict(list)
     for edge in graph.get_edges():
@@ -19,6 +22,7 @@ def build_adjacency_and_reverse(graph):
     return adj, rev_adj
 
 def find_all_paths_to_target(adj, roots, target):
+    """Find all paths in a graph from given root nodes to a target node, avoiding cycles and using memoization for efficiency."""
     paths = []
     visited = set()
     success_cache = defaultdict(set)
@@ -68,6 +72,7 @@ def find_all_paths_to_target(adj, roots, target):
     return paths
 
 def build_subgraph_from_paths(paths, exported_nodes):
+    """Construct a new pydot subgraph from a list of paths and mark exported nodes with a comment."""
     new_graph = pydot.Dot(graph_type='digraph')
     nodes = set()
     edges = set()
@@ -90,6 +95,7 @@ def build_subgraph_from_paths(paths, exported_nodes):
     return new_graph
 
 def build_target_subgraph(graph, target_node, exported_nodes):
+    """Build a subgraph containing all paths from exported nodes to a target node within a given graph."""
     adj, _ = build_adjacency_and_reverse(graph)
     target_node = normalize_node(target_node)
     exported_nodes = [normalize_node(n) for n in exported_nodes]

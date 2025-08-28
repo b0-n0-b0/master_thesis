@@ -4,6 +4,7 @@ from collections import defaultdict
 import subprocess
 
 def parse_wassail_output(output, rule_set):
+    """Parse the output of Wassail for a given RuleSet and return a dictionary mapping rule IDs to lists of RuleMatch objects."""
     matches = output.stdout.decode('utf-8').strip().split("\n")
     rule_matches = defaultdict(list)
     for match in matches:
@@ -20,6 +21,7 @@ def parse_wassail_output(output, rule_set):
     return rule_matches
     
 def get_rule_matches(rule_set, module):
+    """Run Wassail to apply rules on a module and return the parsed rule matches."""
     wassail_input = ""
     for rule in rule_set.rules:
         wassail_input = wassail_input +  rule.target_instruction + ","
@@ -32,6 +34,7 @@ def get_rule_matches(rule_set, module):
     return rule_matches
 
 def get_exported_nodes(module):
+    """Run Wassail to get exported nodes from a module and return them as a list of node names."""
     output = subprocess.run(["wassail","exports",module], capture_output=True)
     if len(output.stderr) > 0:
         print(f"[WARNING]: unexpected output from wassail:\n{output.stderr.decode('utf-8')}", flush=True)
@@ -40,7 +43,8 @@ def get_exported_nodes(module):
         exported_nodes.append("node"+line.split("\t")[0])
     return exported_nodes
 
-def get_cfg(module):
+def get_callgraph(module):
+    """Run Wassail to generate a callgraph for a module, load it from a DOT file, and return the graph object."""
     output = subprocess.run(["wassail","callgraph", module, "callgraph.dot"], capture_output=True)
     if len(output.stderr) > 0:
         print(f"[WARNING]: unexpected output from wassail:\n{output.stderr.decode('utf-8')}", flush=True)

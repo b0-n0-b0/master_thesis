@@ -8,13 +8,12 @@ class Param():
         self.size = size
 
 class InstructionHookPlugin(Plugin):
-    """A plugin that hooks instruction execution and applies constraints"""
+    """A plugin that hooks the instruction execution and applies constraints specified in the rule file"""
 
     def __init__(self, rule_instances):
         super().__init__()
         # solve for the input symbols once these are over
         self.rule_instances = rule_instances
-        # self.current_rule_idx = 0
         self.match_constraints = []
 
     # NOTE: apply at match
@@ -24,7 +23,6 @@ class InstructionHookPlugin(Plugin):
 
         # NOTE: abandon ALL the states once done
         if current_rule_idx > len(self.rule_instances)-1:
-            # print(f"current_rule_idx -> {current_rule_idx} in state {state}")
             state.abandon()
         
         if len(self.rule_instances) > 0:
@@ -41,51 +39,40 @@ class InstructionHookPlugin(Plugin):
                 # NOTE: all constraints where applied, we are ready to try and concretize the state
                 if current_rule_idx == len(self.rule_instances)-1:
                     if (state.is_feasible()):
-                        # print("found constraints for:", flush=True)
-                        # print(current_rule, flush=True)
                         self.match_constraints.append(state._constraints)
-                        # print(state._constraints, flush=True)
-                        # for sym in state.input_symbols:
-                        #     solved = state.solve_n(sym,1)
-                        #     print(f"solution for {sym.name}: {solved}")
-                    # else:
-                        # print("not feasible", flush=True)
                 
                 # NOTE: we found the rule match, we can proceed to the next one
                 with self.locked_context("counter", dict) as ctx:
                     ctx['current_rule_idx'] += 1
 
     def will_execute_instruction_callback(self, state, *args):
-        # self.example_solver_for_add_if(state, *args)
+        """ callback for the will_execute_instruction event"""
+
         instruction = args[0]
-        # print(f"In function: {instruction.funcaddr} executing {instruction.mnemonic} @ offset {instruction.offset}", flush=True)
         self.generic_solver(state, instruction)
 
 class CallHookPlugin(Plugin):
+    """A plugin that hooks the execution of both call and call_indirect in order to find constraints related to a specific edge in the callgraph"""
+
     def __init__(self, target_function_call, target_src):
         super().__init__()
         self.target_call = target_function_call
         self.target_src = target_src
-        # solve for the input symbols once these are over
         self.match_constraints = []
     def will_call_function_callback(self, state, *args):
         called_function, current_function = args
-        # print(f"{current_function} is calling {called_function}")
         if (current_function == self.target_src and called_function == self.target_call and state.is_feasible()):
-            # print(f"feasible: {current_function} -> {called_function}")
             self.match_constraints.append(state._constraints)
-        # print("call done")
 
-# In order to invoke a wasm function with symbolic parameters, 
-# we use a function that returns an array of symbolic values 
-# with types compatibles with the function signature
 def param_generator(state, params):
+    """Symbolic parameter generator"""
     sym_params = []
     for param in params:
         sym_params.append(state.new_symbolic_value(param.size, param.name))
     return sym_params
 
 def run_symbolic_execution(module, function_index, plugin):
+    """Execute the function identified by function_index of the specified module with the specified plugin."""
     # NOTE: Initialize ManticoreWASM with the target WebAssembly file
     m = ManticoreWASM(module)
     types = m.get_params_by_func_index(function_index)[0]
@@ -94,27 +81,10 @@ def run_symbolic_execution(module, function_index, plugin):
         param_specs.append(Param(f"param_{idx}", type.get_size()))
     # NOTE: Register our instruction execution hook
     # NOTE: The Rule is provided by the RuleSet, fidx and offset are provided by the wassail output 
-    # if isinstance(plugin, InstructionHookPlugin):
-        # print(f"registered the plugin")
     m.register_plugin(plugin)
     # NOTE: Call the function with symbolic arguments
     m.invoke_by_index(function_index, param_generator, param_specs)
     m.run()
     m.finalize()
     return plugin.match_constraints
-
-if __name__ == "__main__":
-    m = ManticoreWASM("../tests/hello_world/hello_world.wasm")
-    m.register_plugin(InstructionHookPlugin([
-        RuleMatch(Rule("name","i32.add",["arg3", "arg4"],["arg3 == 19", "arg3 > 0"]),fidx=2, offset=6),
-        RuleMatch(Rule("name","i32.add",["arg5", "arg6"],["arg5 != 0"]),fidx=2, offset=20),
-        ]))
-    types = m.get_params_by_func_index(function_index)[0]
-    param_specs = []
-    for idx, type in enumerate(types):
-        param_specs.append(Param(f"param_{idx}", type.get_size()))
-    m.invoke_by_index(2, param_generator, param_specs)
-    m.run()
-    m.finalize()
-    
 

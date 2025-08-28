@@ -3,6 +3,7 @@ from itertools import product
 
 # generate all the valid combinations for a sequence of rules
 def generate_ordered_valid_combinations(data_map, check_function, key_order):
+    """Generate all valid combinations of items from data_map in the specified key_order that satisfy the check_function."""
     keys = list(data_map.keys())
     # NOTE: create combinations only if there is at least one match per rule
     unique_keys = list(dict.fromkeys(keys))
@@ -18,6 +19,7 @@ def generate_ordered_valid_combinations(data_map, check_function, key_order):
             yield ordered
 # valid sequence check
 def is_valid_rule_match_sequence(combination):
+    """Check if a combination of rule matches occurs sequentially within the same function."""
     last_fidx = None
     last_offset = None
     for rule_match in combination.values():
@@ -34,4 +36,5 @@ def is_valid_rule_match_sequence(combination):
     return True
 # Reorder combination
 def reorder_combination(combo, key_order):
+    """Reorder a combination dictionary according to the specified key_order."""
     return {key: combo[key] for key in key_order if key in combo}
