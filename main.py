@@ -12,21 +12,21 @@ def setup_logging(debug: bool):
     if debug:
         logging.basicConfig(level=logging.DEBUG)
     else:
-        logging.basicConfig(logging.INFO)  # Disable all logs
+        logging.basicConfig(level=logging.INFO)
 
 def symbolic_exec_task(args):
     """Wrapper for parallel symbolic execution with InstructionHookPlugin"""
     module, fidx, valid_match_sequence = args
     logging.debug(f"________________________\nSymbolic execution of function {fidx} with match sequence:")
     for match in valid_match_sequence:
-        logging.debug(f"\n{match}\n", flush=True)
-    logging.debug("________________________", flush=True)
+        logging.debug(f"\n{match}\n")
+    logging.debug("________________________")
 
     try:
         constraints = run_symbolic_execution(module, fidx, InstructionHookPlugin(valid_match_sequence))
         return (fidx, constraints)
     except Exception as e:
-        print(e, flush=True)
+        logging.error(e)
         return None
 
 def edge_exec_task(args):
@@ -34,7 +34,7 @@ def edge_exec_task(args):
     module, src_function, dst_function, found_edge_constraints = args
     if (src_function,dst_function) in found_edge_constraints:
         return (src_function, dst_function, found_edge_constraints[(src_function,dst_function)])
-    logging.debug(f"calculating {src_function} -> {dst_function}", flush=True)
+    logging.debug(f"calculating {src_function} -> {dst_function}")
     constraints = run_symbolic_execution(module, src_function, CallHookPlugin(dst_function, src_function))
     found_edge_constraints[(src_function,dst_function)] = constraints
     return (src_function, dst_function, constraints)
@@ -51,6 +51,7 @@ def main():
         help="Number of concurrent processes to use for parallel execution (default: 4)"
     )
     args = parser.parse_args()
+    setup_logging(args.debug)
 
     args.jobs = min(cpu_count(), args.jobs)
 
@@ -74,7 +75,7 @@ def main():
     
     # NOTE: it was impossible to build a match sequence that satisfies the expected rule sequence 
     if len(symbolic_tasks) == 0:
-        logging.info("No match for the provided rule set was found", flush=True)
+        logging.info("No match for the provided rule set was found")
         return
 
     # Step 2: Run symbolic executions in parallel
@@ -85,9 +86,9 @@ def main():
     # Step 3: Collect results
     for fidx, constraints in symbolic_results:
         if constraints:
-            logging.debug(f"Constraints for function {fidx}:", flush=True)
+            logging.debug(f"Constraints for function {fidx}:")
             for c in constraints:
-                logging.debug(c, flush=True)
+                logging.debug(c)
             found_constraints.setdefault(fidx, []).append(constraints)
 
     # Step 4: Build subgraphs and prepare edge execution tasks
@@ -127,6 +128,8 @@ def main():
         #         print(f"_______________constraint set {idx+1}_______________", flush=True)
         #         print(c, flush=True)
         print(sub_callgraph)
+
+# TODO: add constraints to the target function in the output DOT file
 
 if __name__ == "__main__":
     main()
