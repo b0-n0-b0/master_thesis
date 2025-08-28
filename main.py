@@ -9,7 +9,7 @@ from utils.wassail_utils import get_rule_matches, get_exported_nodes, get_callgr
 from utils.dot_file_utils import build_target_subgraph
 from solver import run_symbolic_execution, InstructionHookPlugin, CallHookPlugin
 
-def setup_logging(debug: bool, logfile: str = "app.log"):
+def setup_logging(debug: bool, logfile: str = "/logs/app.log"):
     # File handler
     file_handler = logging.FileHandler(logfile)
     file_handler.setLevel(logging.DEBUG if debug else logging.INFO)
