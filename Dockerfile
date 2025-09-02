@@ -49,6 +49,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy Python app into the image
+RUN mkdir /logs
+RUN mkdir /output
 COPY . /app
 
 

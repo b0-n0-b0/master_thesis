@@ -2,6 +2,7 @@ import argparse
 import os
 import logging
 import sys
+import json
 from multiprocessing import Pool, cpu_count, Manager
 from utils.rule_parser_lark import parse_rule_file
 from utils.collections_utils import generate_ordered_valid_combinations, is_valid_rule_match_sequence
@@ -71,8 +72,7 @@ def main():
     if len(rule_matches) == 0:
         logging.info("No match for the provided rule set was found")
         return
-    #NOTE: test for /inputs/1318-axosnake.wasm
-    # rule_matches[0] = rule_matches[0][58:59]
+
     key_order = rule_set.application_order
     callgraph = get_callgraph(args.module)
     found_constraints = {}
@@ -116,7 +116,7 @@ def main():
             src_function = int(edge.get_source().strip('"').strip("node"))
             dst_function = int(edge.get_destination().strip('"').strip("node"))
             edge_tasks.append((args.module, src_function, dst_function, found_edge_constraints))
-        sub_callgraph_list.append(sub_callgraph)
+        sub_callgraph_list.append((fidx, sub_callgraph))
         logging.debug(f"sub-callgraph for function {fidx}:")
         logging.debug(sub_callgraph)
     
@@ -126,20 +126,37 @@ def main():
 
     # Step 6: Annotate the callgraph with constraints
     edge_constraints_map = {(src, dst): cons for src, dst, cons in edge_results}
-    for sub_callgraph in sub_callgraph_list:
+    for fidx, sub_callgraph in sub_callgraph_list:
         edges = sub_callgraph.get_edges()
         for edge in edges:
             src_function = int(edge.get_source().strip('"').strip("node"))
             dst_function = int(edge.get_destination().strip('"').strip("node"))
-            edge.set_comment(edge_constraints_map.get((src_function, dst_function), []))
+            constraints = edge_constraints_map.get((src_function, dst_function))
+            comment = ""
+            for c in constraints:
+                comment += c.to_string()
+            edge.set_comment(comment)
+        node = sub_callgraph.get_node(f"node{fidx}")
+        if node:
+            node[0].set("label", "target")
+            node[0].set("color", "\"red\"")
+            target_constraints_readable = []
+            target_constraints = found_constraints.get(fidx)
+            for constraint_list in target_constraints:
+                constraint = ""
+                for c in constraint_list:
+                    constraint += c.to_string()
+                target_constraints_readable.append(constraint)
+            node[0].set("comment",json.dumps(target_constraints_readable))
         # for edge in edges:
         #     print(f"In order to go from function {edge.get_source().strip('node')} to function {edge.get_destination().strip('node')} the constraints are:", flush=True)
         #     for idx, c in enumerate(edge.get_comment()):
         #         print(f"_______________constraint set {idx+1}_______________", flush=True)
         #         print(c, flush=True)
-        print(sub_callgraph)
-
-# TODO: add constraints to the target function in the output DOT file
+        # print(sub_callgraph)
+        # TODO: test this
+        with open(f"/output/function_{fidx}_annotated_sub-callgraph.dot", "w") as f:
+            f.write(sub_callgraph.to_string())
 
 if __name__ == "__main__":
     main()

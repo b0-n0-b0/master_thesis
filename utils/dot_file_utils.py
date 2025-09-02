@@ -85,8 +85,10 @@ def build_subgraph_from_paths(paths, exported_nodes):
 
     for node in nodes:
         dot_node = pydot.Node(node)
+        dot_node.set_shape("record")
         if node in exported_nodes:
-            dot_node.set_comment("exported")
+            dot_node.set_comment("\"exported\"")
+            dot_node.set_color("\"green\"")
         new_graph.add_node(dot_node)
 
     for src, dst in edges:
