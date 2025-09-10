@@ -9,6 +9,8 @@ from utils.collections_utils import generate_ordered_valid_combinations, is_vali
 from utils.wassail_utils import get_rule_matches, get_exported_nodes, get_callgraph
 from utils.dot_file_utils import build_target_subgraph
 from solver import run_symbolic_execution, InstructionHookPlugin, CallHookPlugin
+# TODO: remove
+import time
 
 def setup_logging(debug: bool, logfile: str = "/logs/app.log"):
     # File handler
@@ -72,11 +74,15 @@ def main():
     if len(rule_matches) == 0:
         logging.info("No match for the provided rule set was found")
         return
+    # else:
+    #     print("matches found", flush=True)
+    # for match in rule_matches[0]:
+    #     print(match)
 
     key_order = rule_set.application_order
     callgraph = get_callgraph(args.module)
     found_constraints = {}
-
+    # return
     # Step 1: Prepare tasks for symbolic execution of rule matches
     symbolic_tasks = []
     for combo in generate_ordered_valid_combinations(rule_matches, is_valid_rule_match_sequence, key_order):
@@ -88,6 +94,7 @@ def main():
         logging.info("No match for the provided rule set was found")
         return
 
+    logging.info(f"number of matches:{len(symbolic_tasks)}")
     # Step 2: Run symbolic executions in parallel
     with Pool(processes=args.jobs) as pool:
         symbolic_results = pool.map(symbolic_exec_task, symbolic_tasks)
@@ -119,7 +126,7 @@ def main():
         sub_callgraph_list.append((fidx, sub_callgraph))
         logging.debug(f"sub-callgraph for function {fidx}:")
         logging.debug(sub_callgraph)
-    
+
     # Step 5: Run edge-based symbolic executions in parallel
     with Pool(processes=args.jobs) as pool:
         edge_results = pool.map(edge_exec_task, edge_tasks)
@@ -148,13 +155,6 @@ def main():
                     constraint += c.to_string()
                 target_constraints_readable.append(constraint)
             node[0].set("comment",json.dumps(target_constraints_readable))
-        # for edge in edges:
-        #     print(f"In order to go from function {edge.get_source().strip('node')} to function {edge.get_destination().strip('node')} the constraints are:", flush=True)
-        #     for idx, c in enumerate(edge.get_comment()):
-        #         print(f"_______________constraint set {idx+1}_______________", flush=True)
-        #         print(c, flush=True)
-        # print(sub_callgraph)
-        # TODO: test this
         with open(f"/output/function_{fidx}_annotated_sub-callgraph.dot", "w") as f:
             f.write(sub_callgraph.to_string())
 

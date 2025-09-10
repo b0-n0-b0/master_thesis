@@ -85,6 +85,6 @@ def run_symbolic_execution(module, function_index, plugin):
     # NOTE: Call the function with symbolic arguments
     m.invoke_by_index(function_index, param_generator, param_specs)
     m.run()
-    m.finalize()
+    # m.finalize()
     return plugin.match_constraints
 
